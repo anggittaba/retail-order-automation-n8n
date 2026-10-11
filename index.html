@@ -3,16 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retail Order Automation — a field report in four stages</title>
-<meta name="description" content="Follow one retail order through an n8n workflow: intake, validation, Google Sheets storage, Gmail notification. Interactive simulation, exact validation rules, honest error handling.">
+<title>Retail Order Automation — live demo</title>
+<meta name="description" content="Watch an order travel from webhook to spreadsheet to inbox. Interactive n8n workflow demo — no reading required.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Hallmark · pre-emit critique: P5 H4 E5 S4 R5 V5 */
-/* Hallmark · macrostructure: Narrative Workflow · genre: editorial · theme: Newsprint (spirit) · nav: N6 masthead · footer: Ft6 letter-close · audience: prospective retail/automation clients · use: understand the workflow by watching one order's journey, then download it · tone: editorial, plainspoken, instrument-grade */
-/* Hallmark · contrast: pass (40-41) · nav: N6 · footer: Ft6 · slop: pass (42-45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50-57) */
-/* first Hallmark run for this project — no .hallmark/log.json to rotate against */
+/* Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V5 */
+/* Hallmark · macrostructure: demo-console (was: narrative-workflow; reason: user asked simpler) · genre: editorial · theme: Newsprint (spirit) · nav: N6-slim · footer: Ft-one-line · audience: prospective retail/automation clients · use: understand the product in 10 seconds by watching the demo, then download it · tone: labels over sentences */
+/* Hallmark · contrast: pass (40-41) · nav: N6 · footer: Ft-one-line · slop: pass (42-45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50-57) */
 :root{
   --color-paper:    oklch(93% 0.040 55);
   --color-paper-2:  oklch(90% 0.045 55);
@@ -37,39 +36,31 @@
   --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --space-3xs: 0.25rem;  /* 4px */
-  --space-2xs: 0.5rem;   /* 8px */
-  --space-xs: 0.75rem;   /* 12px */
-  --space-sm: 1rem;      /* 16px */
-  --space-md: 1.5rem;    /* 24px */
-  --space-lg: 2rem;      /* 32px */
-  --space-xl: 3rem;      /* 48px */
-  --space-2xl: 4rem;     /* 64px */
-  --space-3xl: 6rem;     /* 96px */
-  --space-4xl: 8rem;     /* 128px */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4rem;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1.0625rem;
   --text-md: 1.25rem;
   --text-lg: 1.5625rem;
-  --text-xl: 2rem;
-  --text-display: clamp(2.75rem, 5vw + 1rem, 5rem);
-  --text-display-s: clamp(2rem, 3vw + 1rem, 2.875rem);
 
   --lh-tight: 1.04;
-  --lh-snug: 1.25;
   --lh-normal: 1.6;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --dur-micro: 120ms;
   --dur-short: 220ms;
   --dur-long: 420ms;
 
-  --page-max: 72rem;
-  --page-gutter: clamp(1.25rem, 4vw, 3rem);
-  --measure: 62ch;
+  --page-max: 76rem;
+  --page-gutter: clamp(1rem, 3vw, 2.5rem);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{overflow-x:clip;scroll-behavior:smooth}
@@ -89,7 +80,7 @@ img,svg{display:block}
 .skip{position:absolute;left:-9999px;top:0;background:var(--color-ink);color:var(--color-paper);padding:var(--space-2xs) var(--space-sm);z-index:200;font-family:var(--font-mono);font-size:var(--text-sm)}
 .skip:focus{left:var(--space-sm);top:var(--space-sm)}
 
-/* ---------- masthead (N6) ---------- */
+/* ---------- slim masthead ---------- */
 .masthead{
   position:sticky;top:0;z-index:100;
   background:var(--color-paper);
@@ -97,16 +88,16 @@ img,svg{display:block}
 }
 .masthead__row{
   display:flex;align-items:center;gap:var(--space-md);
-  min-height:4rem;padding-top:var(--space-2xs);padding-bottom:var(--space-2xs);
+  min-height:3.75rem;padding-top:var(--space-2xs);padding-bottom:var(--space-2xs);
 }
 .wordmark{
-  font-family:var(--font-display);font-weight:700;font-size:1.375rem;letter-spacing:-0.02em;
+  font-family:var(--font-display);font-weight:700;font-size:1.25rem;letter-spacing:-0.02em;
   color:var(--color-ink);text-decoration:none;line-height:1;white-space:nowrap;
 }
-.wordmark em{font-style:normal;color:var(--color-accent)}
-.folio{
-  font-family:var(--font-mono);font-size:var(--text-xs);letter-spacing:0.08em;text-transform:uppercase;
-  color:var(--color-muted);white-space:nowrap;line-height:1;
+.tagline{
+  font-family:var(--font-mono);font-size:var(--text-xs);
+  color:var(--color-muted);white-space:nowrap;line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;
 }
 .index{display:flex;align-items:center;gap:var(--space-sm);margin-left:auto}
 .index a{
@@ -115,9 +106,10 @@ img,svg{display:block}
 }
 .index a:hover{color:var(--color-ink)}
 .index a:focus-visible,.wordmark:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
-@media(max-width:900px){.index{display:none}.folio{display:none}}
+@media(max-width:56rem){.index{display:none}}
+@media(max-width:40rem){.tagline{display:none}}
 
-/* ---------- buttons / links ---------- */
+/* ---------- buttons ---------- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2xs);
   min-height:2.75rem;padding:var(--space-2xs) var(--space-md);
@@ -136,83 +128,15 @@ img,svg{display:block}
 .btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
 .btn:disabled{opacity:0.45;cursor:not-allowed}
 .btn:disabled:hover{background:var(--color-ink);color:var(--color-paper);border-color:var(--color-ink)}
-.textlink{font-weight:600;text-underline-offset:3px;text-decoration-thickness:1px}
-.textlink:hover{color:var(--color-ink)}
-.textlink:active{color:var(--color-muted)}
-a:active{color:var(--color-ink)}
-.textlink:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
 
-/* ---------- opening (the problem) ---------- */
-.opening{padding:var(--space-2xl) 0 var(--space-3xl)}
-.kicker{
-  font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;
-  letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent);margin-bottom:var(--space-md);
-}
-.display{
-  font-family:var(--font-display);font-weight:600;font-size:var(--text-display);
-  line-height:var(--lh-tight);letter-spacing:-0.022em;color:var(--color-ink);
-  max-width:14ch;overflow-wrap:anywhere;min-width:0;margin-bottom:var(--space-md);
-}
-.display .verb{color:var(--color-accent)}
-.lede{font-size:var(--text-md);line-height:var(--lh-normal);max-width:var(--measure);color:var(--color-ink-2);margin-bottom:var(--space-lg)}
-.lede code{font-family:var(--font-mono);font-size:0.85em;background:var(--color-paper-2);border:1px solid var(--color-rule);padding:0.1em 0.45em;border-radius:2px}
-.cta-row{display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap}
+/* ---------- demo console ---------- */
+.console{padding:var(--space-lg) 0 var(--space-xl)}
+.console__grid{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:var(--space-md);align-items:start}
+@media(max-width:60rem){.console__grid{grid-template-columns:minmax(0,1fr)}}
+.console__flow>*+*{margin-top:var(--space-sm)}
 
-/* ---------- route map ---------- */
-.route{border-top:3px solid var(--color-ink);padding:var(--space-xl) 0 var(--space-2xl)}
-.route__label{
-  font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
-  color:var(--color-muted);margin-bottom:var(--space-md);
-}
-.route__label b{color:var(--color-accent)}
-.pipe-scroll{overflow-x:auto;border:1px solid var(--color-rule);background:var(--color-paper-2)}
-#pipeRow{display:flex;align-items:stretch;position:relative;min-width:44rem}
-.pnode{flex:1 1 0;min-width:0;text-align:left;position:relative;z-index:2;padding:var(--space-md) var(--space-sm) var(--space-sm);border-left:1px solid var(--color-rule)}
-.pnode:first-child{border-left:none}
-.pnode__no{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.1em;color:var(--color-muted);margin-bottom:var(--space-2xs)}
-.pnode__icon{width:2.5rem;height:2.5rem;border:1px solid var(--color-rule-2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-2xs);background:var(--color-paper);transition:border-color var(--dur-short) var(--ease-out), background-color var(--dur-short) var(--ease-out)}
-.pnode__icon svg{width:1.25rem;height:1.25rem}
-.pnode__label{font-family:var(--font-display);font-weight:600;font-size:1.0625rem;color:var(--color-ink);line-height:1.2}
-.pnode__sub{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted);margin-top:var(--space-3xs)}
-.pnode__state{height:1.375rem;margin-top:var(--space-2xs);display:flex;align-items:center;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
-.pnode.is-active .pnode__icon{border-color:var(--color-accent)}
-.pnode.is-active .pnode__state{color:var(--color-accent)}
-.pnode.is-done .pnode__icon{border-color:var(--color-ok);background:var(--color-ok-dim)}
-.pnode.is-done .pnode__state{color:var(--color-ok)}
-.pnode.is-error .pnode__icon{border-color:var(--color-err);background:var(--color-err-dim)}
-.pnode.is-error .pnode__state{color:var(--color-err)}
-.plink{flex:0 0 1.5rem;position:relative;align-self:stretch;background:linear-gradient(var(--color-rule),var(--color-rule)) center/1px 100% no-repeat}
-.plink .cdot{position:absolute;top:50%;left:50%;width:7px;height:7px;border-radius:50%;background:var(--color-accent);animation:cdot 2.6s var(--ease-out) infinite}
-.plink .cdot.c2{animation-delay:-1.3s;background:var(--color-muted)}
-@keyframes cdot{0%,100%{opacity:0.15;transform:translate(-50%,-50%) scale(0.8)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}}
-.pnode__icon svg,.toast-top .gmark svg{stroke:var(--color-icon)}
-.toast-top .gmark svg{stroke:var(--color-ok)}
-#packet{position:absolute;left:0;top:0;width:0.9375rem;height:0.9375rem;border-radius:50%;background:var(--color-paper);border:3px solid var(--color-accent);z-index:5;opacity:0;transition:transform .5s var(--ease-out),opacity var(--dur-short) var(--ease-out);pointer-events:none}
-#packet.show{opacity:1}
-#packet.bad{border-color:var(--color-err)}
-.route__caption{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted);margin-top:var(--space-2xs)}
-
-/* ---------- chapters (the narrative spine) ---------- */
-.chapter{border-top:3px solid var(--color-ink);padding:var(--space-xl) 0 var(--space-2xl)}
-.stage-head{margin-bottom:var(--space-lg);max-width:var(--measure)}
-.stage-no{
-  font-family:var(--font-mono);font-size:var(--text-sm);font-weight:600;
-  letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent);margin-bottom:var(--space-2xs);
-}
-.stage-head h2{
-  font-family:var(--font-display);font-weight:600;font-size:var(--text-display-s);
-  line-height:var(--lh-tight);letter-spacing:-0.022em;color:var(--color-ink);
-  overflow-wrap:anywhere;min-width:0;margin-bottom:var(--space-2xs);
-}
-.stage-lede{font-size:var(--text-base);color:var(--color-ink-2);max-width:var(--measure)}
-.stage-lede b{color:var(--color-ink)}
-
-/* sweep-horizontal reveal, once */
-.reveal{opacity:0;transform:translateX(1.75rem);transition:opacity var(--dur-long) var(--ease-out),transform var(--dur-long) var(--ease-out)}
-.reveal.in{opacity:1;transform:none}
-
-/* ---------- scenario bar ---------- */
-.scenario-bar{display:flex;gap:var(--space-2xs);flex-wrap:wrap;margin-bottom:var(--space-md)}
+/* ---------- scenario chips ---------- */
+.scenario-bar{display:flex;gap:var(--space-2xs);flex-wrap:wrap;margin-bottom:var(--space-sm)}
 .sc-btn{
   padding:var(--space-2xs) var(--space-sm);min-height:2.25rem;
   border:1px solid var(--color-rule-2);background:transparent;color:var(--color-muted);
@@ -227,16 +151,16 @@ a:active{color:var(--color-ink)}
 .sc-btn:disabled{opacity:0.4;cursor:not-allowed}
 
 /* ---------- panels ---------- */
-.panel{background:var(--color-paper-2);border:1px solid var(--color-rule);padding:var(--space-md)}
+.panel{background:var(--color-paper-2);border:1px solid var(--color-rule);padding:var(--space-sm)}
 .panel__title{
   display:flex;align-items:center;gap:var(--space-2xs);
   font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
-  color:var(--color-ink);margin-bottom:var(--space-sm);
+  color:var(--color-ink);margin-bottom:var(--space-2xs);
 }
 .panel__title svg{width:1.125rem;height:1.125rem;flex:none}
 
-/* ---------- form ---------- */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xs)}
+/* ---------- compact form ---------- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2xs)}
 .form-grid .full{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:var(--space-3xs);min-height:0}
 .field label{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.04em;color:var(--color-muted)}
@@ -244,37 +168,62 @@ a:active{color:var(--color-ink)}
 .field input{
   background:var(--color-paper);border:1px solid var(--color-rule-2);border-radius:2px;
   color:var(--color-ink);padding:0 var(--space-2xs);font-size:var(--text-sm);font-family:var(--font-mono);
-  width:100%;min-height:2.75rem;outline:2px solid transparent;outline-offset:1px;
+  width:100%;min-height:2.5rem;outline:2px solid transparent;outline-offset:1px;
   transition:border-color var(--dur-micro) var(--ease-out), background-color var(--dur-micro) var(--ease-out);
 }
 .field input:hover{border-color:var(--color-muted)}
 .field input:focus{border-color:var(--color-accent);outline:2px solid var(--color-focus)}
 .field input:active{background:var(--color-paper-2)}
 .field input:disabled{opacity:0.55;cursor:not-allowed;background:var(--color-paper-3)}
-.controls{display:flex;gap:var(--space-xs);align-items:center;margin-top:var(--space-md);flex-wrap:wrap}
+.controls{display:flex;gap:var(--space-2xs);align-items:center;margin-top:var(--space-sm);flex-wrap:wrap}
 .speed{display:flex;align-items:center;gap:var(--space-2xs);font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted);margin-left:auto}
 .speed select{
   background:var(--color-paper);border:1px solid var(--color-rule-2);color:var(--color-ink);border-radius:2px;
   min-height:2.25rem;padding:0 var(--space-2xs);font-size:var(--text-xs);font-family:var(--font-mono);
 }
 .speed select:focus-visible{outline:2px solid var(--color-focus);outline-offset:1px}
-.stage-cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--space-md);align-items:start}
-@media(max-width:60rem){.stage-cols{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- pipeline ---------- */
+.pipe-scroll{overflow-x:auto;border:1px solid var(--color-rule);background:var(--color-paper-2)}
+#pipeRow{display:flex;align-items:stretch;position:relative;min-width:40rem}
+.pnode{flex:1 1 0;min-width:0;text-align:left;position:relative;z-index:2;padding:var(--space-sm) var(--space-2xs);border-left:1px solid var(--color-rule)}
+.pnode:first-child{border-left:none}
+.pnode__no{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.1em;color:var(--color-muted);margin-bottom:var(--space-2xs)}
+.pnode__icon{width:2.25rem;height:2.25rem;border:1px solid var(--color-rule-2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-3xs);background:var(--color-paper);transition:border-color var(--dur-short) var(--ease-out), background-color var(--dur-short) var(--ease-out)}
+.pnode__icon svg{width:1.125rem;height:1.125rem}
+.pnode__label{font-family:var(--font-display);font-weight:600;font-size:var(--text-sm);color:var(--color-ink);line-height:1.2;white-space:nowrap}
+.pnode__sub{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted);margin-top:var(--space-3xs);white-space:nowrap}
+.pnode__state{height:1.25rem;margin-top:var(--space-3xs);display:flex;align-items:center;font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
+.pnode.is-active .pnode__icon{border-color:var(--color-accent)}
+.pnode.is-active .pnode__state{color:var(--color-accent)}
+.pnode.is-done .pnode__icon{border-color:var(--color-ok);background:var(--color-ok-dim)}
+.pnode.is-done .pnode__state{color:var(--color-ok)}
+.pnode.is-error .pnode__icon{border-color:var(--color-err);background:var(--color-err-dim)}
+.pnode.is-error .pnode__state{color:var(--color-err)}
+.plink{flex:0 0 1rem;position:relative;align-self:stretch;background:linear-gradient(var(--color-rule),var(--color-rule)) center/1px 100% no-repeat}
+.plink .cdot{position:absolute;top:50%;left:50%;width:7px;height:7px;border-radius:50%;background:var(--color-accent);animation:cdot 2.6s var(--ease-out) infinite}
+.plink .cdot.c2{animation-delay:-1.3s;background:var(--color-muted)}
+@keyframes cdot{0%,100%{opacity:0.15;transform:translate(-50%,-50%) scale(0.8)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}}
+.pnode__icon svg,.toast-top .gmark svg{stroke:var(--color-icon)}
+.toast-top .gmark svg{stroke:var(--color-ok)}
+#packet{position:absolute;left:0;top:0;width:0.9375rem;height:0.9375rem;border-radius:50%;background:var(--color-paper);border:3px solid var(--color-accent);z-index:5;opacity:0;transition:transform .5s var(--ease-out),opacity var(--dur-short) var(--ease-out);pointer-events:none}
+#packet.show{opacity:1}
+#packet.bad{border-color:var(--color-err)}
 
 /* ---------- validation checklist ---------- */
-#checklistWrap{display:none;margin-top:var(--space-sm)}
+#checklistWrap{display:none}
 #checklistWrap.show{display:block}
-.check-item{display:flex;align-items:flex-start;gap:var(--space-xs);padding:var(--space-2xs) 0;border-bottom:1px solid var(--color-rule);font-size:var(--text-sm)}
+.check-item{display:flex;align-items:flex-start;gap:var(--space-2xs);padding:var(--space-3xs) 0;border-bottom:1px solid var(--color-rule);font-size:var(--text-sm)}
 .check-item:last-child{border-bottom:none}
-.ck{flex:none;width:1.25rem;height:1.25rem;border-radius:50%;border:1px solid var(--color-rule-2);margin-top:0.125rem;display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:700;font-family:var(--font-mono)}
+.ck{flex:none;width:1.25rem;height:1.25rem;border-radius:50%;border:1px solid var(--color-rule-2);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:700;font-family:var(--font-mono)}
 .ck.run{border-color:var(--color-accent);border-top-color:transparent;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .ck.ok{border-color:var(--color-ok);background:var(--color-ok-dim);color:var(--color-ok)}
 .ck.no{border-color:var(--color-err);background:var(--color-err-dim);color:var(--color-err)}
-.check-item .rule{font-family:var(--font-mono);font-size:var(--text-xs)}
+.check-item .rule{font-family:var(--font-mono);font-size:var(--text-xs);padding-top:0.125rem}
 .check-item .msg{color:var(--color-err);font-size:var(--text-xs);margin-top:var(--space-3xs)}
 
-/* ---------- rules table ---------- */
+/* ---------- rules table (inside accordion) ---------- */
 .rules-table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
 .rules-table th{
   text-align:left;padding:var(--space-2xs) var(--space-sm);color:var(--color-muted);
@@ -297,35 +246,39 @@ a:active{color:var(--color-ink)}
 }
 .sheet-head span{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted)}
 .table-wrap{overflow-x:auto;border:1px solid var(--color-rule-2);background:var(--color-paper)}
-table.sheet{border-collapse:collapse;width:100%;min-width:64rem;font-size:var(--text-xs);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+table.sheet{border-collapse:collapse;width:100%;min-width:56rem;font-size:var(--text-xs);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
 table.sheet th{background:var(--color-paper-2);color:var(--color-muted);text-align:left;padding:var(--space-2xs) var(--space-sm);font-weight:600;border-bottom:2px solid var(--color-ink);white-space:nowrap;letter-spacing:0.04em}
 table.sheet td{padding:var(--space-2xs) var(--space-sm);border-bottom:1px solid var(--color-rule);white-space:nowrap;color:var(--color-ink-2)}
 table.sheet tr:last-child td{border-bottom:none}
 table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
 @keyframes rowflash{0%,60%{background:var(--color-ok-dim)}100%{background:transparent}}
-.sheet-empty{padding:var(--space-md);text-align:center;color:var(--color-muted);font-size:var(--text-sm);font-family:var(--font-body)}
-.note{display:none;margin-top:var(--space-sm);padding:var(--space-sm) var(--space-md);font-size:var(--text-sm);line-height:1.55;border:1px solid}
+.sheet-empty{padding:var(--space-sm);text-align:center;color:var(--color-muted);font-size:var(--text-sm)}
+.note{display:none;margin-top:var(--space-2xs);padding:var(--space-2xs) var(--space-sm);font-size:var(--text-sm);line-height:1.55;border:1px solid}
 .note.show{display:block}
 .note.info{background:var(--color-paper-3);border-color:var(--color-rule-2);color:var(--color-ink-2)}
 .note.warn{background:var(--color-warn-dim);border-color:var(--color-warn);color:var(--color-ink-2)}
 .note b{color:var(--color-ink)}
 .note code{font-family:var(--font-mono);font-size:0.9em;background:var(--color-paper);border:1px solid var(--color-rule);padding:0.05em 0.4em;border-radius:2px}
 
-/* ---------- response + log ---------- */
+/* ---------- outcome strip ---------- */
 .resp{display:none}
 .resp.show{display:block;animation:fadeup .4s var(--ease-out)}
 @keyframes fadeup{from{opacity:0;transform:translateY(0.5rem)}to{opacity:1;transform:none}}
-.resp-head{display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)}
+.resp-head{display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-2xs);flex-wrap:wrap}
 .pill{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:600;padding:var(--space-3xs) var(--space-sm);border:1px solid;white-space:nowrap}
 .pill.ok{background:var(--color-ok-dim);color:var(--color-ok);border-color:var(--color-ok)}
 .pill.bad{background:var(--color-err-dim);color:var(--color-err);border-color:var(--color-err)}
-.code{background:var(--color-paper);border:1px solid var(--color-rule-2);padding:var(--space-sm) var(--space-md);font-family:var(--font-mono);font-size:var(--text-xs);line-height:1.7;overflow-x:auto;white-space:pre;color:var(--color-ink-2);font-variant-numeric:tabular-nums}
+.resp-summary{font-size:var(--text-sm);color:var(--color-ink-2);margin-bottom:var(--space-2xs)}
+.resp-summary b{color:var(--color-ink)}
+.code{background:var(--color-paper);border:1px solid var(--color-rule-2);padding:var(--space-2xs) var(--space-sm);font-family:var(--font-mono);font-size:var(--text-xs);line-height:1.7;overflow-x:auto;white-space:pre;color:var(--color-ink-2);font-variant-numeric:tabular-nums}
 .code .k{color:var(--color-accent)} .code .s{color:var(--color-ok)} .code .n{color:var(--color-warn)} .code .b{color:var(--color-ink);font-weight:600}
-#eventLog{max-height:19rem;overflow-y:auto}
-.log-item{display:flex;gap:var(--space-xs);padding:var(--space-2xs) 0;border-bottom:1px solid var(--color-rule);font-size:var(--text-sm);animation:fadeup .3s var(--ease-out)}
+
+/* ---------- compact log ---------- */
+#eventLog{max-height:8.5rem;overflow-y:auto}
+.log-item{display:flex;gap:var(--space-2xs);padding:var(--space-3xs) 0;border-bottom:1px solid var(--color-rule);font-size:var(--text-sm);animation:fadeup .3s var(--ease-out)}
 .log-item:last-child{border-bottom:none}
-.log-time{font-family:var(--font-mono);color:var(--color-muted);font-size:var(--text-xs);flex:none;padding-top:var(--space-3xs);font-variant-numeric:tabular-nums}
-.ltag{flex:none;font-family:var(--font-mono);font-size:0.625rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:var(--space-3xs) var(--space-2xs);height:fit-content;margin-top:var(--space-3xs);border:1px solid;white-space:nowrap}
+.log-time{font-family:var(--font-mono);color:var(--color-muted);font-size:var(--text-xs);flex:none;font-variant-numeric:tabular-nums}
+.ltag{flex:none;font-family:var(--font-mono);font-size:0.625rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;padding:var(--space-3xs) var(--space-2xs);height:fit-content;border:1px solid;white-space:nowrap}
 .ltag.t-form{background:var(--color-paper-3);color:var(--color-muted);border-color:var(--color-rule)}
 .ltag.t-webhook{background:var(--color-paper-3);color:var(--color-accent);border-color:var(--color-accent)}
 .ltag.t-validate{background:var(--color-warn-dim);color:var(--color-warn);border-color:var(--color-warn)}
@@ -336,7 +289,7 @@ table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
 .log-msg{color:var(--color-ink-2)}
 .log-msg.err{color:var(--color-err)}
 
-/* ---------- toast (what the owner receives) ---------- */
+/* ---------- toast ---------- */
 #toast{
   position:fixed;right:var(--space-md);bottom:var(--space-md);width:min(22.5rem,calc(100vw - 2rem));
   background:var(--color-paper);border:1px solid var(--color-rule-2);z-index:120;
@@ -355,16 +308,30 @@ table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
 .toast-body .trow{margin-bottom:var(--space-3xs)}
 .toast-body .trow:last-child{margin-bottom:0}
 
-/* ---------- ledger rows (errors, files) ---------- */
-.ledger{border-top:2px solid var(--color-ink)}
-.ledger-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-md);padding:var(--space-md) 0;border-bottom:1px solid var(--color-rule)}
-@media(max-width:60rem){.ledger-row{grid-template-columns:minmax(0,1fr)}}
-.ledger-row__code{font-family:var(--font-mono);font-size:var(--text-sm);font-weight:600;color:var(--color-err);margin-bottom:var(--space-2xs)}
-.ledger-row__code.amber{color:var(--color-warn)}
-.ledger-row h3{font-family:var(--font-display);font-weight:600;font-size:var(--text-lg);color:var(--color-ink);margin-bottom:var(--space-2xs);letter-spacing:-0.01em}
-.ledger-row p{font-size:var(--text-base);color:var(--color-ink-2);max-width:52ch}
-.ledger-row p b{color:var(--color-ink)}
-.ledger-row p code,.ledger-row li code{font-family:var(--font-mono);font-size:0.85em}
+/* ---------- accordions ---------- */
+.more{padding:0 0 var(--space-xl)}
+.acc{border-top:2px solid var(--color-ink)}
+.acc:last-of-type{border-bottom:2px solid var(--color-ink)}
+.acc summary{
+  display:flex;align-items:center;gap:var(--space-sm);cursor:pointer;list-style:none;
+  padding:var(--space-sm) 0;font-family:var(--font-display);font-weight:600;
+  font-size:var(--text-md);color:var(--color-ink);letter-spacing:-0.01em;
+}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary .acc-mark{
+  flex:none;width:1.5rem;height:1.5rem;border:1px solid var(--color-rule-2);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:var(--text-sm);color:var(--color-accent);line-height:1;
+}
+.acc[open] summary .acc-mark{color:var(--color-paper);background:var(--color-accent);border-color:var(--color-accent)}
+.acc summary:hover .acc-mark{border-color:var(--color-accent)}
+.acc summary:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.acc__body{padding:0 0 var(--space-md)}
+.err-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-sm);padding:var(--space-2xs) 0;border-bottom:1px solid var(--color-rule);align-items:baseline}
+.err-row:last-child{border-bottom:none}
+.err-row p{font-size:var(--text-sm);color:var(--color-ink-2)}
+.err-row p b{color:var(--color-ink)}
+.err-row .code{margin-top:var(--space-2xs)}
 .file-row{display:flex;align-items:baseline;gap:var(--space-sm);padding:var(--space-2xs) 0;border-bottom:1px solid var(--color-rule);font-size:var(--text-base)}
 .file-row:last-child{border-bottom:none}
 .file-row .fno{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted);flex:none;width:2.5rem}
@@ -372,26 +339,19 @@ table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
 .file-row .fdesc{margin-left:auto;color:var(--color-muted);font-size:var(--text-sm);text-align:right;flex:none;max-width:24rem}
 @media(max-width:40rem){.file-row .fdesc{display:none}.file-row{flex-wrap:wrap}}
 
-/* ---------- letter close (Ft6) ---------- */
-.letter{border-top:3px solid var(--color-ink);padding:var(--space-2xl) 0 var(--space-3xl)}
-.letter__inner{max-width:44rem}
-.letter .kicker{margin-bottom:var(--space-sm)}
-.letter h2{font-family:var(--font-display);font-weight:600;font-size:var(--text-display-s);line-height:var(--lh-tight);letter-spacing:-0.022em;color:var(--color-ink);overflow-wrap:anywhere;min-width:0;margin-bottom:var(--space-sm)}
-.letter p{font-size:var(--text-md);max-width:var(--measure);margin-bottom:var(--space-sm)}
-.letter .cta-row{margin:var(--space-md) 0 var(--space-lg)}
-.signature{font-family:var(--font-display);font-size:var(--text-lg);color:var(--color-ink)}
-.fine{margin-top:var(--space-md);font-size:var(--text-sm);color:var(--color-muted);max-width:var(--measure)}
-.colophon{border-top:1px solid var(--color-rule);padding:var(--space-md) 0 var(--space-xl)}
-.colophon p{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-muted);letter-spacing:0.02em}
+/* ---------- one-line footer ---------- */
+.foot{border-top:3px solid var(--color-ink);padding:var(--space-md) 0 var(--space-xl)}
+.foot p{font-family:var(--font-mono);font-size:var(--text-sm);color:var(--color-muted)}
+.foot a{font-weight:600}
 
 /* ---------- responsive ---------- */
-@media(max-width:60rem){
-  .opening{padding:var(--space-xl) 0 var(--space-2xl)}
-}
 @media(max-width:40rem){
+  .wordmark{font-size:1.0625rem}
+  .masthead .btn{display:none}
   .form-grid{grid-template-columns:minmax(0,1fr)}
   .controls .btn{flex:1 1 auto}
   .speed{margin-left:0;width:100%;justify-content:flex-start}
+  .err-row{grid-template-columns:minmax(0,1fr)}
 }
 
 /* ---------- reduced motion ---------- */
@@ -402,7 +362,6 @@ table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
     animation-iteration-count:1 !important;
     transition-duration:150ms !important;
   }
-  .reveal{opacity:1;transform:none;transition:none}
   .plink .cdot{display:none}
   #packet{transition-duration:150ms !important}
   table.sheet tr.row-flash td{animation:none}
@@ -410,144 +369,155 @@ table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
 </style>
 </head>
 <body>
-<a class="skip" href="#ch-intake">Skip to the simulation</a>
+<a class="skip" href="#demo">Skip to the demo</a>
 
 <header class="masthead">
   <div class="wrap masthead__row">
-    <a class="wordmark" href="#top">OrderFlow <em>Ledger</em></a>
-    <p class="folio">No. 001 · n8n workflow template</p>
+    <a class="wordmark" href="#top">Retail Order Automation</a>
+    <p class="tagline">Watch an order travel from webhook to spreadsheet to inbox — live.</p>
     <nav class="index" aria-label="Sections">
-      <a href="#ch-intake">1.0 Intake</a>
-      <a href="#ch-validate">2.0 Validate</a>
-      <a href="#ch-store">3.0 Store</a>
-      <a href="#ch-notify">4.0 Notify</a>
-      <a href="#errors">Errors</a>
+      <a href="#demo">Demo</a>
       <a href="#files">Files</a>
     </nav>
-    <a class="btn btn--primary btn--sm" href="#get">Get the workflow</a>
+    <a class="btn btn--primary btn--sm" href="workflow/order_processing_n8n_workflow.json" download>Get the workflow</a>
   </div>
 </header>
 
 <main id="top">
-  <!-- The problem -->
-  <section class="opening">
+  <!-- THE DEMO -->
+  <section class="console" id="demo" aria-label="Live demo">
     <div class="wrap">
-      <p class="kicker">Field notes · retail order processing</p>
-      <h1 class="display">Every order, <span class="verb">copied</span> by hand.</h1>
-      <p class="lede">Manual order processing wastes time, leads to copy-paste errors and delays notifications. This n8n workflow replaces the chore: <code>webhook → validation → Google Sheets → Gmail</code>. What follows is one order&rsquo;s journey through the system, in four stages.</p>
-      <p class="cta-row">
-        <a class="btn btn--primary" href="#ch-intake">Follow one order</a>
-        <a class="textlink" href="README.md">Read the setup guide</a>
-      </p>
+      <div class="console__grid">
+
+        <div class="console__form">
+          <div class="scenario-bar" id="scenarioBar" role="group" aria-label="Scenarios">
+            <button class="sc-btn active" data-sc="valid">Valid</button>
+            <button class="sc-btn" data-sc="invalid">Invalid</button>
+            <button class="sc-btn" data-sc="retry">Retry</button>
+            <button class="sc-btn" data-sc="injection">Injection</button>
+          </div>
+          <div class="panel">
+            <p class="panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              Order form
+            </p>
+            <div class="form-grid">
+              <div class="field full"><label for="f_order_id">order_id</label><input id="f_order_id" value="ORD-1001" spellcheck="false"></div>
+              <div class="field"><label for="f_customer_name">customer_name</label><input id="f_customer_name" value="Jane Smith" spellcheck="false"></div>
+              <div class="field"><label for="f_customer_email">customer_email</label><input id="f_customer_email" value="jane@example.com" spellcheck="false"></div>
+              <div class="field full"><label for="f_product">product</label><input id="f_product" value="Wireless Keyboard" spellcheck="false"></div>
+              <div class="field"><label for="f_quantity">quantity</label><input id="f_quantity" value="2" inputmode="numeric" spellcheck="false"></div>
+              <div class="field"><label for="f_unit_price">unit_price</label><input id="f_unit_price" value="39.5" inputmode="decimal" spellcheck="false"></div>
+              <div class="field"><label for="f_currency">currency <span class="opt">(opt.)</span></label><input id="f_currency" value="USD" spellcheck="false"></div>
+              <div class="field"><label for="f_notes">notes <span class="opt">(opt.)</span></label><input id="f_notes" value="Deliver during business hours" spellcheck="false"></div>
+            </div>
+            <div class="controls">
+              <button class="btn btn--primary" id="btnSend">Send order</button>
+              <button class="btn btn--ghost" id="btnReplay">Replay</button>
+              <label class="speed">Speed
+                <select id="speedSel">
+                  <option value="1" selected>1x</option>
+                  <option value="2">2x</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="console__flow">
+          <div class="pipe-scroll" aria-label="Live pipeline">
+            <div id="pipeRow">
+              <div id="packet" aria-hidden="true"></div>
+              <div class="pnode" id="node-form">
+                <p class="pnode__no">1 · intake</p>
+                <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none"  stroke-width="1.6" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+                <p class="pnode__label">Order form</p><p class="pnode__sub">JSON payload</p><p class="pnode__state" id="state-form"></p>
+              </div>
+              <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
+              <div class="pnode" id="node-webhook">
+                <p class="pnode__no">1 · intake</p>
+                <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none"  stroke-width="1.6" aria-hidden="true"><path d="M9 17H7a4 4 0 0 1 0-8h2M15 7h2a4 4 0 0 1 0 8h-2M8 12h8"/></svg></div>
+                <p class="pnode__label">Webhook</p><p class="pnode__sub">header auth</p><p class="pnode__state" id="state-webhook"></p>
+              </div>
+              <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
+              <div class="pnode" id="node-validate">
+                <p class="pnode__no">2 · validate</p>
+                <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none"  stroke-width="1.6" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div>
+                <p class="pnode__label">Validate</p><p class="pnode__sub">7 rules</p><p class="pnode__state" id="state-validate"></p>
+              </div>
+              <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
+              <div class="pnode" id="node-sheets">
+                <p class="pnode__no">3 · store</p>
+                <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none"  stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg></div>
+                <p class="pnode__label">Google Sheets</p><p class="pnode__sub">upsert on order_id</p><p class="pnode__state" id="state-sheets"></p>
+              </div>
+              <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
+              <div class="pnode" id="node-gmail">
+                <p class="pnode__no">4 · notify</p>
+                <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none"  stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+                <p class="pnode__label">Gmail</p><p class="pnode__sub">notify owner</p><p class="pnode__state" id="state-gmail"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" id="checklistWrap">
+            <p class="panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+              Validation — live
+            </p>
+            <div id="checklist"></div>
+          </div>
+
+          <div>
+            <div class="sheet-head">
+              <p class="tab">Orders</p>
+              <span>mock Google Sheet · upsert key: order_id</span>
+            </div>
+            <div class="table-wrap">
+              <table class="sheet">
+                <thead><tr>
+                  <th>received_at</th><th>order_id</th><th>customer_name</th><th>customer_email</th><th>product</th><th>quantity</th><th>unit_price</th><th>currency</th><th>total_amount</th><th>notes</th>
+                </tr></thead>
+                <tbody id="sheetBody">
+                  <tr><td colspan="10"><div class="sheet-empty">No rows yet — press Send order.</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="note info" id="sheetNote"></div>
+          </div>
+
+          <div class="panel resp" id="respPanel">
+            <div class="resp-head">
+              <p class="panel__title" style="margin:0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>
+                Result
+              </p>
+              <span class="pill ok" id="respCode">200</span>
+            </div>
+            <p class="resp-summary" id="respSummary"></p>
+            <div class="code" id="respBody"></div>
+          </div>
+
+          <div class="panel">
+            <p class="panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              Log
+            </p>
+            <div id="eventLog"><div class="sheet-empty" style="padding:var(--space-2xs)">Run a scenario to see the log.</div></div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
-  <!-- The route -->
-  <section class="route" aria-label="The route">
+  <!-- SECONDARY CONTENT: collapsed -->
+  <section class="more" aria-label="Details">
     <div class="wrap">
-      <p class="route__label">The route · <b>five stops</b> · a packet travels it below during the simulation</p>
-      <div class="pipe-scroll">
-        <div id="pipeRow">
-          <div id="packet" aria-hidden="true"></div>
-          <div class="pnode" id="node-form">
-            <p class="pnode__no">stop 1</p>
-            <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a6d3b" stroke-width="1.6" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
-            <p class="pnode__label">Order form</p><p class="pnode__sub">JSON payload</p><p class="pnode__state" id="state-form"></p>
-          </div>
-          <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
-          <div class="pnode" id="node-webhook">
-            <p class="pnode__no">stop 2</p>
-            <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a6d3b" stroke-width="1.6" aria-hidden="true"><path d="M9 17H7a4 4 0 0 1 0-8h2M15 7h2a4 4 0 0 1 0 8h-2M8 12h8"/></svg></div>
-            <p class="pnode__label">Webhook</p><p class="pnode__sub">header auth</p><p class="pnode__state" id="state-webhook"></p>
-          </div>
-          <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
-          <div class="pnode" id="node-validate">
-            <p class="pnode__no">stop 3</p>
-            <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a6d3b" stroke-width="1.6" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div>
-            <p class="pnode__label">Validate</p><p class="pnode__sub">rules + normalize</p><p class="pnode__state" id="state-validate"></p>
-          </div>
-          <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
-          <div class="pnode" id="node-sheets">
-            <p class="pnode__no">stop 4</p>
-            <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a6d3b" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg></div>
-            <p class="pnode__label">Google Sheets</p><p class="pnode__sub">upsert on order_id</p><p class="pnode__state" id="state-sheets"></p>
-          </div>
-          <div class="plink" aria-hidden="true"><span class="cdot"></span><span class="cdot c2"></span></div>
-          <div class="pnode" id="node-gmail">
-            <p class="pnode__no">stop 5</p>
-            <div class="pnode__icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a6d3b" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
-            <p class="pnode__label">Gmail</p><p class="pnode__sub">notify owner</p><p class="pnode__state" id="state-gmail"></p>
-          </div>
-        </div>
-      </div>
-      <p class="route__caption">Packets drift along the route continuously — decoration only. The real journey starts at stage 1.0.</p>
-    </div>
-  </section>
 
-  <!-- 1.0 INTAKE -->
-  <section class="chapter reveal" id="ch-intake">
-    <div class="wrap">
-      <div class="stage-head">
-        <p class="stage-no">1.0 · Intake</p>
-        <h2>The order arrives.</h2>
-        <p class="stage-lede">A customer checks out; the order lands as JSON on <b>POST /webhook/new-customer-order</b>, carrying a secret header the workflow checks first. Pick a scenario — or edit the fields yourself — and press <b>Send order</b>.</p>
-      </div>
-      <div class="scenario-bar" id="scenarioBar" role="group" aria-label="Scenarios">
-        <button class="sc-btn active" data-sc="valid">Valid order</button>
-        <button class="sc-btn" data-sc="invalid">Invalid order</button>
-        <button class="sc-btn" data-sc="retry">Retry same order_id</button>
-        <button class="sc-btn" data-sc="injection">Formula injection</button>
-      </div>
-      <div class="panel">
-        <p class="panel__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-          Mock order form
-        </p>
-        <div class="form-grid">
-          <div class="field full"><label for="f_order_id">order_id</label><input id="f_order_id" value="ORD-1001" spellcheck="false"></div>
-          <div class="field"><label for="f_customer_name">customer_name</label><input id="f_customer_name" value="Jane Smith" spellcheck="false"></div>
-          <div class="field"><label for="f_customer_email">customer_email</label><input id="f_customer_email" value="jane@example.com" spellcheck="false"></div>
-          <div class="field full"><label for="f_product">product</label><input id="f_product" value="Wireless Keyboard" spellcheck="false"></div>
-          <div class="field"><label for="f_quantity">quantity</label><input id="f_quantity" value="2" inputmode="numeric" spellcheck="false"></div>
-          <div class="field"><label for="f_unit_price">unit_price</label><input id="f_unit_price" value="39.5" inputmode="decimal" spellcheck="false"></div>
-          <div class="field"><label for="f_currency">currency <span class="opt">(optional)</span></label><input id="f_currency" value="USD" spellcheck="false"></div>
-          <div class="field"><label for="f_notes">notes <span class="opt">(optional)</span></label><input id="f_notes" value="Deliver during business hours" spellcheck="false"></div>
-        </div>
-        <div class="controls">
-          <button class="btn btn--primary" id="btnSend">Send order</button>
-          <button class="btn btn--ghost" id="btnReplay">Replay</button>
-          <label class="speed">Speed
-            <select id="speedSel">
-              <option value="1" selected>1x</option>
-              <option value="2">2x</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 2.0 VALIDATE -->
-  <section class="chapter reveal" id="ch-validate">
-    <div class="wrap">
-      <div class="stage-head">
-        <p class="stage-no">2.0 · Validate</p>
-        <h2>Every field, checked.</h2>
-        <p class="stage-lede">A code node trims, strips control characters, and runs each rule in turn. Watch the checklist below light up as the order passes through — the same seven rules as the importable workflow.</p>
-      </div>
-      <div class="stage-cols">
-        <div class="panel" id="checklistWrap">
-          <p class="panel__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
-            Validation checklist — live
-          </p>
-          <div id="checklist"></div>
-        </div>
-        <div class="panel">
-          <p class="panel__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
-            The rules, from the workflow code
-          </p>
+      <details class="acc">
+        <summary><span class="acc-mark" aria-hidden="true">+</span>How validation works</summary>
+        <div class="acc__body">
           <div style="overflow-x:auto">
           <table class="rules-table">
             <thead><tr><th>Field</th><th>Required</th><th>Rule</th></tr></thead>
@@ -565,191 +535,80 @@ table.sheet tr.row-flash td{animation:rowflash 2.4s var(--ease-out)}
           </div>
           <p class="formula-note"><code>total_amount = round(quantity × unit_price, 2)</code> · single product per order, no tax / discount / shipping in this MVP.</p>
         </div>
-      </div>
-    </div>
-  </section>
+      </details>
 
-  <!-- 3.0 STORE -->
-  <section class="chapter reveal" id="ch-store">
-    <div class="wrap">
-      <div class="stage-head">
-        <p class="stage-no">3.0 · Store</p>
-        <h2>One row per order.</h2>
-        <p class="stage-lede">Valid orders are written to the <b>Orders</b> sheet with <b>RAW</b> cell formatting, matched on <b>order_id</b> — the same id twice updates the row in place instead of appending a duplicate. The mock sheet below persists between your runs, so try the retry scenario.</p>
-      </div>
-      <div class="sheet-head">
-        <p class="tab">Orders</p>
-        <span>mock of the Google Sheet · upsert key: order_id · RAW cell format</span>
-      </div>
-      <div class="table-wrap">
-        <table class="sheet">
-          <thead><tr>
-            <th>received_at</th><th>order_id</th><th>customer_name</th><th>customer_email</th><th>product</th><th>quantity</th><th>unit_price</th><th>currency</th><th>total_amount</th><th>notes</th>
-          </tr></thead>
-          <tbody id="sheetBody">
-            <tr><td colspan="10"><div class="sheet-empty">No rows yet — send a valid order to write the first row.</div></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="note info" id="sheetNote"></div>
-    </div>
-  </section>
-
-  <!-- 4.0 NOTIFY -->
-  <section class="chapter reveal" id="ch-notify">
-    <div class="wrap">
-      <div class="stage-head">
-        <p class="stage-no">4.0 · Notify</p>
-        <h2>The owner hears first.</h2>
-        <p class="stage-lede">Only after the sheet write succeeds does Gmail fire — the owner gets the order summary, and the webhook answers <b>200</b>. The notification below is what lands in the inbox; the log beside it timestamps every stop of the journey.</p>
-      </div>
-      <div class="stage-cols">
-        <div class="panel resp" id="respPanel">
-          <div class="resp-head">
-            <p class="panel__title" style="margin:0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>
-              Webhook response
-            </p>
-            <span class="pill ok" id="respCode">200</span>
-          </div>
-          <div class="code" id="respBody"></div>
-        </div>
-        <div class="panel">
-          <p class="panel__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
-            Event log
-          </p>
-          <div id="eventLog"><div class="sheet-empty" style="padding:var(--space-sm)">Run a scenario to see every stage with timestamps.</div></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div id="toast" role="status" aria-live="polite">
-    <div class="toast-top">
-      <div class="gmark"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3f7a52" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
-      <div><b>GMAIL</b><small>to owner@store.example</small></div>
-      <button id="toastClose" aria-label="Dismiss notification">&times;</button>
-    </div>
-    <div class="toast-body">
-      <div class="trow"><b id="toastSubject">New order</b></div>
-      <div class="trow" id="toastBody"></div>
-    </div>
-  </div>
-
-  <!-- Interlude: when things go wrong -->
-  <section class="chapter reveal" id="errors">
-    <div class="wrap">
-      <div class="stage-head">
-        <p class="stage-no">Interlude · failure modes</p>
-        <h2>Every failure has a defined response.</h2>
-        <p class="stage-lede">The workflow never fails silently. Each stage answers with its own HTTP status and a machine-readable body — the exact bodies from the workflow:</p>
-      </div>
-      <div class="ledger">
-        <div class="ledger-row">
-          <div>
-            <p class="ledger-row__code">400 · INVALID ORDER</p>
-            <h3>Validation fails, nothing happens</h3>
-            <p>The webhook answers immediately. <b>No sheet write, no email.</b> The body lists every broken rule so the sender can fix and resend.</p>
-          </div>
-          <div class="code">{
+      <details class="acc">
+        <summary><span class="acc-mark" aria-hidden="true">+</span>When things go wrong</summary>
+        <div class="acc__body">
+          <div class="err-row">
+            <span class="pill bad">400</span>
+            <div>
+              <p><b>Invalid order</b> — rejected at validation. No sheet write, no email.</p>
+              <div class="code">{
   <span class="k">"status"</span>: <span class="s">"rejected"</span>,
-  <span class="k">"errors"</span>: [
-    <span class="s">"customer_email must be valid"</span>,
-    ...
-  ]
+  <span class="k">"errors"</span>: [<span class="s">"customer_email must be valid"</span>, …]
 }</div>
-        </div>
-        <div class="ledger-row">
-          <div>
-            <p class="ledger-row__code amber">502 · SHEETS FAILURE</p>
-            <h3>The write fails, silence is safer</h3>
-            <p>The spreadsheet write fails → <b>no notification is sent</b>, so the owner is never told about an order that was not stored. Safe to retry with the same <code>order_id</code>.</p>
+            </div>
           </div>
-          <div class="code">{
+          <div class="err-row">
+            <span class="pill bad">502</span>
+            <div>
+              <p><b>Sheets failure</b> — nothing stored, so no notification is sent. Safe to retry.</p>
+              <div class="code">{
   <span class="k">"status"</span>: <span class="s">"error"</span>,
-  <span class="k">"stage"</span>: <span class="s">"google_sheets"</span>,
-  <span class="k">"message"</span>: <span class="s">"Order storage failed;
-    use the same order_id
-    for a safe retry."</span>
+  <span class="k">"stage"</span>: <span class="s">"google_sheets"</span>
 }</div>
-        </div>
-        <div class="ledger-row">
-          <div>
-            <p class="ledger-row__code amber">502 · GMAIL FAILURE</p>
-            <h3>Stored, but not announced</h3>
-            <p>Email fails <b>after</b> the sheet write → the order is already stored. The partial-failure flag warns you to check notification state <b>before</b> retrying.</p>
+            </div>
           </div>
-          <div class="code">{
+          <div class="err-row">
+            <span class="pill bad">502</span>
+            <div>
+              <p><b>Gmail failure</b> — order already stored; check before retrying.</p>
+              <div class="code">{
   <span class="k">"status"</span>: <span class="s">"partial_failure"</span>,
-  <span class="k">"stage"</span>: <span class="s">"email"</span>,
-  <span class="k">"saved"</span>: <span class="b">true</span>,
-  <span class="k">"notified"</span>: <span class="b">false</span>,
-  <span class="k">"message"</span>: <span class="s">"Order stored but
-    notification failed..."</span>
+  <span class="k">"saved"</span>: <span class="b">true</span>, <span class="k">"notified"</span>: <span class="b">false</span>
 }</div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </section>
+      </details>
 
-  <!-- Appendix: what's in the box -->
-  <section class="chapter reveal" id="files">
-    <div class="wrap">
-      <div class="stage-head">
-        <p class="stage-no">Appendix · the repository</p>
-        <h2>Everything needed to deploy it.</h2>
-        <p class="stage-lede">The full repository behind this demo — importable workflow, sample payloads, runnable tests, and client-ready docs.</p>
-      </div>
-      <div class="ledger">
-        <div class="file-row"><span class="fno">01</span><a href="workflow/order_processing_n8n_workflow.json" download>workflow/order_processing_n8n_workflow.json</a><span class="fdesc">Import into n8n (Workflows → Import from File)</span></div>
-        <div class="file-row"><span class="fno">02</span><a href="workflow/samples/valid_order.json">workflow/samples/valid_order.json</a><span class="fdesc">Sample: valid order (ORD-1001)</span></div>
-        <div class="file-row"><span class="fno">03</span><a href="workflow/samples/invalid_order.json">workflow/samples/invalid_order.json</a><span class="fdesc">Sample: invalid order (7 broken rules)</span></div>
-        <div class="file-row"><span class="fno">04</span><a href="workflow/samples/valid_retry.json">workflow/samples/valid_retry.json</a><span class="fdesc">Sample: duplicate retry of ORD-1001</span></div>
-        <div class="file-row"><span class="fno">05</span><a href="workflow/samples/formula_injection.json">workflow/samples/formula_injection.json</a><span class="fdesc">Sample: formula-injection attempt</span></div>
-        <div class="file-row"><span class="fno">06</span><a href="workflow/run_local_tests.js">workflow/run_local_tests.js</a><span class="fdesc">Run: node run_local_tests.js (from workflow/)</span></div>
-        <div class="file-row"><span class="fno">07</span><a href="README.md">README.md</a><span class="fdesc">Full setup guide + acceptance checklist</span></div>
-        <div class="file-row"><span class="fno">08</span><a href="PROPOSAL.md">PROPOSAL.md</a><span class="fdesc">Client proposal draft</span></div>
-        <div class="file-row"><span class="fno">09</span><a href="CLIENT_QUESTIONS.md">CLIENT_QUESTIONS.md</a><span class="fdesc">Discovery questions for clients</span></div>
-      </div>
-    </div>
-  </section>
+      <details class="acc" id="files">
+        <summary><span class="acc-mark" aria-hidden="true">+</span>Files in this repo</summary>
+        <div class="acc__body">
+          <div class="file-row"><span class="fno">01</span><a href="workflow/order_processing_n8n_workflow.json" download>workflow/order_processing_n8n_workflow.json</a><span class="fdesc">Import into n8n</span></div>
+          <div class="file-row"><span class="fno">02</span><a href="workflow/samples/valid_order.json">workflow/samples/valid_order.json</a><span class="fdesc">Sample: valid order</span></div>
+          <div class="file-row"><span class="fno">03</span><a href="workflow/samples/invalid_order.json">workflow/samples/invalid_order.json</a><span class="fdesc">Sample: invalid order</span></div>
+          <div class="file-row"><span class="fno">04</span><a href="workflow/samples/valid_retry.json">workflow/samples/valid_retry.json</a><span class="fdesc">Sample: duplicate retry</span></div>
+          <div class="file-row"><span class="fno">05</span><a href="workflow/samples/formula_injection.json">workflow/samples/formula_injection.json</a><span class="fdesc">Sample: formula injection</span></div>
+          <div class="file-row"><span class="fno">06</span><a href="workflow/run_local_tests.js">workflow/run_local_tests.js</a><span class="fdesc">Run: node run_local_tests.js</span></div>
+          <div class="file-row"><span class="fno">07</span><a href="README.md">README.md</a><span class="fdesc">Full setup guide</span></div>
+          <div class="file-row"><span class="fno">08</span><a href="PROPOSAL.md">PROPOSAL.md</a><span class="fdesc">Client proposal draft</span></div>
+          <div class="file-row"><span class="fno">09</span><a href="CLIENT_QUESTIONS.md">CLIENT_QUESTIONS.md</a><span class="fdesc">Discovery questions</span></div>
+        </div>
+      </details>
 
-  <!-- Letter close -->
-  <section class="letter reveal" id="get">
-    <div class="wrap">
-      <div class="letter__inner">
-        <p class="kicker">A note from the builder</p>
-        <h2>Want this for your store?</h2>
-        <p>Import the workflow into n8n, connect your Google Sheet and Gmail, and every order is validated, stored, and notified automatically — no more copy-paste, no more missed notifications.</p>
-        <p class="cta-row">
-          <a class="btn btn--primary" href="workflow/order_processing_n8n_workflow.json" download>Download the workflow JSON</a>
-          <a class="textlink" href="README.md">Setup instructions</a>
-        </p>
-        <p class="signature">— Anggit</p>
-        <p class="fine">This demo runs entirely in your browser — no data leaves this page. The production workflow requires your own n8n instance, Google Sheets access, and Gmail authorization.</p>
-      </div>
     </div>
   </section>
 </main>
 
-<footer class="colophon">
+<footer class="foot">
   <div class="wrap">
-    <p>Retail Order Automation · n8n workflow template · Set in Fraunces, Source Serif 4 &amp; IBM Plex Mono · Validation logic mirrors the importable workflow exactly.</p>
+    <p>Want this for your store? <a href="workflow/order_processing_n8n_workflow.json" download>Download the workflow JSON</a> — this demo runs in your browser, no data leaves this page.</p>
   </div>
 </footer>
-<script>
-(function(){
-  var els=document.querySelectorAll(".reveal");
-  function showAll(){for(var i=0;i<els.length;i++){els[i].classList.add("in");}}
-  if(!("IntersectionObserver" in window)){showAll();return;}
-  var io=new IntersectionObserver(function(entries){
-    entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add("in");io.unobserve(en.target);}});
-  },{threshold:0.08,rootMargin:"0px 0px -4% 0px"});
-  for(var i=0;i<els.length;i++){io.observe(els[i]);}
-})();
-</script>
-<noscript><style>.reveal{opacity:1 !important;transform:none !important}</style></noscript>
+
+<div id="toast" role="status" aria-live="polite">
+  <div class="toast-top">
+    <div class="gmark"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"  stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+    <div><b>GMAIL</b><small>to owner@store.example</small></div>
+    <button id="toastClose" aria-label="Dismiss notification">&times;</button>
+  </div>
+  <div class="toast-body">
+    <div class="trow"><b id="toastSubject">New order</b></div>
+    <div class="trow" id="toastBody"></div>
+  </div>
+</div>
 <script>
 (function(){
 "use strict";
@@ -830,13 +689,13 @@ function validateOrder(d){
   var currency=str(d.currency==null?"USD":d.currency,3).toUpperCase();
   var quantity=Number(d.quantity), unit_price=Number(d.unit_price);
   var push=function(label,pass,detail){checks.push({label:label,pass:pass,detail:detail});if(!pass)errors.push(detail);};
-  push("order_id matches ^[A-Za-z0-9_-]{1,64}$",/^[a-zA-Z0-9_-]{1,64}$/.test(order_id),"order_id must be 1-64 letters, numbers, _ or -");
-  push("customer_name is present",!!customer_name,"customer_name is required");
-  push("customer_email has valid format",/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer_email),"customer_email must be valid");
-  push("product is present",!!product,"product is required");
-  push("quantity is an integer 1\u201310000",Number.isInteger(quantity)&&quantity>=1&&quantity<=10000,"quantity must be an integer between 1 and 10000");
-  push("unit_price is 0 \u2013 1,000,000,000",d.unit_price!==""&&d.unit_price!=null&&isFinite(unit_price)&&unit_price>=0&&unit_price<=1e9,"unit_price must be a number from 0 to 1000000000");
-  push("currency is a 3-letter code",/^[A-Z]{3}$/.test(currency),"currency must be a three-letter code");
+  push("order_id format",/^[a-zA-Z0-9_-]{1,64}$/.test(order_id),"order_id must be 1-64 letters, numbers, _ or -");
+  push("customer_name present",!!customer_name,"customer_name is required");
+  push("customer_email valid",/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer_email),"customer_email must be valid");
+  push("product present",!!product,"product is required");
+  push("quantity 1\u201310000",Number.isInteger(quantity)&&quantity>=1&&quantity<=10000,"quantity must be an integer between 1 and 10000");
+  push("unit_price 0 \u2013 1e9",d.unit_price!==""&&d.unit_price!=null&&isFinite(unit_price)&&unit_price>=0&&unit_price<=1e9,"unit_price must be a number from 0 to 1000000000");
+  push("currency code",/^[A-Z]{3}$/.test(currency),"currency must be a three-letter code");
   var valid=errors.length===0;
   return{valid:valid,errors:errors,checks:checks,norm:{
     received_at:new Date().toISOString(),order_id:order_id,customer_name:customer_name,
@@ -890,7 +749,7 @@ function showNote(kind,html){
   var n=$("sheetNote"); n.className="note show "+kind; n.innerHTML=html;
 }
 
-/* ---------- response panel ---------- */
+/* ---------- outcome strip ---------- */
 function hljson(obj){
   var s=JSON.stringify(obj,null,2).replace(/&/g,"&amp;").replace(/</g,"&lt;");
   s=s.replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
@@ -899,10 +758,11 @@ function hljson(obj){
      .replace(/: (true|false|null)/g,': <span class="b">$1</span>');
   return s;
 }
-function showResponse(code,obj){
+function showResponse(code,obj,summary){
   $("respPanel").classList.add("show");
   var pill=$("respCode"); pill.textContent=code;
   pill.className="pill "+(code===200?"ok":"bad");
+  $("respSummary").innerHTML=summary;
   $("respBody").innerHTML=hljson(obj);
 }
 
@@ -981,12 +841,12 @@ async function runScenario(key,overridePayload){
     setNode("form","done");
 
     setNode("webhook","active"); await hop("webhook"); if(!alive(my))return; await sleep(620); if(!alive(my))return;
-    logEvent("webhook","POST /webhook/new-customer-order \u2014 header X-Order-Webhook-Key accepted");
+    logEvent("webhook","POST /webhook/new-customer-order \u2014 header accepted");
     setNode("webhook","done");
 
     setNode("validate","active"); await hop("validate"); if(!alive(my))return;
     $("checklistWrap").classList.add("show");
-    logEvent("validate","Validating and normalizing fields\u2026");
+    logEvent("validate","Checking fields\u2026");
     var res=validateOrder(payload),failed=false;
     for(var i=0;i<res.checks.length;i++){
       var li=addCheckItem(res.checks[i].label);
@@ -997,13 +857,14 @@ async function runScenario(key,overridePayload){
     if(!res.valid){
       setNode("validate","error"); $("packet").classList.add("bad");
       logEvent("response","Validation failed \u2014 nothing written, no email sent",true);
-      showResponse(400,{status:"rejected",errors:res.errors});
+      showResponse(400,{status:"rejected",errors:res.errors},
+        "<b>Rejected.</b> Nothing was written and no email was sent — fix the fields and resend.");
       logEvent("error","HTTP 400 returned with the full error list",true);
       await sleep(500);
       return;
     }
     setNode("validate","done");
-    logEvent("validate","All rules passed \u2014 total_amount = "+res.norm.total_amount);
+    logEvent("validate","All rules passed \u2014 total = "+res.norm.total_amount);
 
     setNode("sheets","active"); await hop("sheets"); if(!alive(my))return; await sleep(520); if(!alive(my))return;
     var updated=upsertRow(res.norm);
@@ -1011,11 +872,11 @@ async function runScenario(key,overridePayload){
       logEvent("sheets","order_id "+res.norm.order_id+" exists \u2014 row updated in place");
       showNote("info","<b>Upsert, not append:</b> the row for <code>"+esc(res.norm.order_id)+"</code> was updated in place \u2014 no duplicate row was added.");
     }else{
-      logEvent("sheets","Row written \u2014 total_amount "+res.norm.total_amount+" computed as round(qty \u00d7 price, 2)");
-      if(key==="retry") showNote("info","No existing row for <code>"+esc(res.norm.order_id)+"</code> in this session, so it was inserted as a new row. Run the <b>Valid order</b> scenario first, then retry it to see the in-place update.");
+      logEvent("sheets","Row written \u2014 total "+res.norm.total_amount+" = round(qty \u00d7 price, 2)");
+      if(key==="retry") showNote("info","No existing row for <code>"+esc(res.norm.order_id)+"</code> in this session, so it was inserted as a new row. Run the <b>Valid</b> scenario first, then retry to see the in-place update.");
     }
     if(key==="injection"){
-      showNote("warn","<b>Formula-injection neutralized:</b> the workflow writes cells with <code>RAW</code> formatting, so values like <code>=1+1</code> and <code>=IMPORTXML(...)</code> are stored as plain text \u2014 never evaluated as spreadsheet formulas.");
+      showNote("warn","<b>Formula injection neutralized:</b> cells are written with <code>RAW</code> formatting, so <code>=1+1</code> and <code>=IMPORTXML(...)</code> are stored as plain text \u2014 never evaluated as formulas.");
       logEvent("sheets","RAW cell format \u2014 formula-like values stored as plain text");
     }
     setNode("sheets","done");
@@ -1025,7 +886,8 @@ async function runScenario(key,overridePayload){
     logEvent("gmail","Notification email sent to the business owner");
     setNode("gmail","done");
     hidePacket();
-    showResponse(200,{status:"success",order_id:res.norm.order_id,saved:true,notified:true});
+    showResponse(200,{status:"success",order_id:res.norm.order_id,saved:true,notified:true},
+      "<b>Done.</b> Order stored in the sheet and the owner was notified.");
     logEvent("response","HTTP 200 \u2014 workflow complete");
   }finally{
     if(alive(my)){running=false;setControls(true);}
@@ -1053,6 +915,9 @@ $("btnReplay").addEventListener("click",function(){
 });
 $("speedSel").addEventListener("change",function(e){speed=Number(e.target.value)||1;});
 $("toastClose").addEventListener("click",function(){$("toast").classList.remove("show");});
+/* opening the Files accordion also opens it when jumped to via the header nav */
+var filesLink=document.querySelector('.index a[href="#files"]');
+if(filesLink){filesLink.addEventListener("click",function(){$("files").open=true;});}
 })();
 </script>
 </body>
