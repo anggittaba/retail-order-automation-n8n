@@ -1,0 +1,9 @@
+{
+  "order_id": "ORD-1002",
+  "customer_name": "=IMPORTXML(\"https://example.net\", \"//*\")",
+  "customer_email": "client@example.com",
+  "product": "=1+1",
+  "quantity": 1,
+  "unit_price": 1,
+  "currency": "USD"
+}

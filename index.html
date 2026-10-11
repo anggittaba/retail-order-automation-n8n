@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retail Order Automation — n8n Workflow Demo</title>
+<meta name="description" content="Interactive demo of an n8n workflow that automates retail order processing: webhook, validation, Google Sheets upsert, Gmail notification.">
+<style>
+:root{
+  --bg:#0a0e17; --bg2:#0d1321; --panel:#101827; --panel2:#0c1220;
+  --border:#1e2a42; --border2:#2a3a58;
+  --text:#e8eef8; --muted:#8f9bb3; --muted2:#6b7690;
+  --accent:#22d3ee; --accent-dim:rgba(34,211,238,.14);
+  --green:#34d399; --green-dim:rgba(52,211,153,.13);
+  --red:#f87171; --red-dim:rgba(248,113,113,.13);
+  --amber:#fbbf24; --amber-dim:rgba(251,191,36,.13);
+  --violet:#a78bfa;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:rgba(34,211,238,.28)}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:60;background:rgba(10,14,23,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;color:var(--text)}
+.brand:hover{text-decoration:none}
+.brand svg{flex:none}
+.brand small{color:var(--muted);font-weight:500}
+.nav-links{display:flex;align-items:center;gap:26px;font-size:14.5px}
+.nav-links a{color:var(--muted)}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+@media(max-width:760px){.nav-links a:not(.btn){display:none}}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:10px;font-weight:600;font-size:15px;border:1px solid transparent;cursor:pointer;transition:transform .15s,box-shadow .15s,background .15s;font-family:var(--sans)}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn-primary{background:linear-gradient(135deg,#0ea5b7,#22d3ee);color:#04222a;box-shadow:0 6px 22px rgba(34,211,238,.28)}
+.btn-primary:hover{box-shadow:0 8px 28px rgba(34,211,238,.4)}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--text)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:8px 16px;font-size:13.5px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* ---------- hero ---------- */
+.hero{padding:84px 0 48px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(620px 320px at 50% -40px,rgba(34,211,238,.12),transparent 70%);pointer-events:none}
+.badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(34,211,238,.3);padding:6px 16px;border-radius:999px;margin-bottom:22px}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.hero h1{font-size:clamp(36px,5.4vw,58px);font-weight:800;letter-spacing:-1.5px;line-height:1.12;margin-bottom:16px}
+.hero h1 .grad{background:linear-gradient(120deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--muted);font-size:clamp(16px,2vw,19px);max-width:640px;margin:0 auto 30px}
+.lede code{font-family:var(--mono);font-size:.88em;color:var(--accent);background:var(--accent-dim);padding:2px 8px;border-radius:6px}
+.hero-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:54px}
+.hero-pipe{max-width:1020px;margin:0 auto}
+.hero-pipe svg{width:100%;height:auto;display:block}
+.pipe-caption{color:var(--muted2);font-size:13px;margin-top:10px}
+
+/* ---------- sections ---------- */
+.section{padding:64px 0}
+.section.alt{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.kicker{color:var(--accent);font-size:13px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:10px}
+.section h2{font-size:clamp(26px,3.4vw,36px);font-weight:750;letter-spacing:-.8px;margin-bottom:12px}
+.section-sub{color:var(--muted);max-width:680px;margin-bottom:36px;font-size:16.5px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:26px}
+.card h3{font-size:17px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.card h3 svg{flex:none}
+
+/* ---------- simulation ---------- */
+.scenario-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.sc-btn{padding:9px 18px;border-radius:999px;border:1px solid var(--border2);background:var(--panel2);color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;font-family:var(--sans);display:inline-flex;align-items:center;gap:8px}
+.sc-btn:hover{border-color:var(--accent);color:var(--text)}
+.sc-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.sc-btn:disabled{opacity:.4;cursor:not-allowed}
+.sim-grid{display:grid;grid-template-columns:390px 1fr;gap:22px;margin-bottom:22px}
+@media(max-width:960px){.sim-grid{grid-template-columns:1fr}}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12.5px;color:var(--muted);font-weight:600}
+.field label .opt{color:var(--muted2);font-weight:400}
+.field input{background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-size:14px;font-family:var(--mono);width:100%}
+.field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+.controls{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
+.speed{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13.5px;margin-left:auto}
+.speed select{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13.5px;font-family:var(--sans)}
+
+/* pipeline */
+.pipe-scroll{overflow-x:auto;border-radius:12px}
+#pipeRow{display:flex;align-items:center;position:relative;min-width:680px;padding:44px 10px 18px}
+.pnode{width:128px;flex:none;text-align:center;position:relative;z-index:2}
+.pnode-icon{width:58px;height:58px;margin:0 auto 10px;border-radius:16px;background:var(--bg2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;transition:border-color .3s,box-shadow .3s,background .3s}
+.pnode-icon svg{width:26px;height:26px}
+.pnode-label{font-size:13px;font-weight:700}
+.pnode-sub{font-size:11px;color:var(--muted2);font-family:var(--mono)}
+.pnode-state{height:22px;margin-top:6px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;letter-spacing:.4px}
+.pnode.is-active .pnode-icon{border-color:var(--accent);box-shadow:0 0 0 5px rgba(34,211,238,.14);animation:nodepulse 1.1s ease-in-out infinite}
+.pnode.is-active .pnode-state{color:var(--accent)}
+.pnode.is-done .pnode-icon{border-color:var(--green);background:var(--green-dim)}
+.pnode.is-done .pnode-state{color:var(--green)}
+.pnode.is-error .pnode-icon{border-color:var(--red);background:var(--red-dim);animation:nodepulse 1.1s ease-in-out infinite}
+.pnode.is-error .pnode-state{color:var(--red)}
+@keyframes nodepulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.plink{flex:1;min-width:26px;height:2px;background:var(--border);position:relative;align-self:center;margin-top:-34px}
+.plink .cdot{position:absolute;top:50%;left:0;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:cdot 2.4s linear infinite}
+.plink .cdot.c2{animation-delay:-1.2s;background:var(--violet);box-shadow:0 0 8px var(--violet)}
+@keyframes cdot{0%{left:0;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:calc(100% - 8px);opacity:0}}
+#packet{position:absolute;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 0 14px var(--accent);z-index:5;transform:translate(-50%,-50%);opacity:0;transition:left .5s ease,top .5s ease;pointer-events:none}
+#packet.show{opacity:1}
+#packet.bad{border-color:var(--red);box-shadow:0 0 14px var(--red)}
+
+/* checklist */
+#checklistWrap{display:none;margin-top:6px}
+#checklistWrap.show{display:block}
+.check-item{display:flex;align-items:flex-start;gap:11px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13.5px}
+.check-item:last-child{border-bottom:none}
+.ck{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.ck.run{border-color:var(--accent);border-top-color:transparent;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ck.ok{border-color:var(--green);background:var(--green-dim);color:var(--green)}
+.ck.no{border-color:var(--red);background:var(--red-dim);color:var(--red)}
+.check-item .rule{font-family:var(--mono);font-size:12.5px}
+.check-item .msg{color:var(--muted2);font-size:12px}
+
+/* sheet mock */
+.sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sheet-head .tab{background:var(--green-dim);border:1px solid rgba(52,211,153,.35);color:var(--green);font-size:13px;font-weight:700;padding:5px 14px;border-radius:8px 8px 0 0}
+.sheet-head span{font-size:12.5px;color:var(--muted2);font-family:var(--mono)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:0 12px 12px 12px}
+table.sheet{border-collapse:collapse;width:100%;min-width:1020px;font-size:12.5px;font-family:var(--mono)}
+table.sheet th{background:var(--bg2);color:var(--muted);text-align:left;padding:9px 12px;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11.5px}
+table.sheet td{padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text)}
+table.sheet tr:last-child td{border-bottom:none}
+table.sheet tr.row-flash td{animation:rowflash 2.4s ease}
+@keyframes rowflash{0%,60%{background:rgba(52,211,153,.22)}100%{background:transparent}}
+.sheet-empty{padding:22px;text-align:center;color:var(--muted2);font-size:13.5px}
+.note{display:none;margin-top:14px;padding:13px 16px;border-radius:10px;font-size:13.5px;line-height:1.55}
+.note.show{display:block}
+.note.info{background:var(--accent-dim);border:1px solid rgba(34,211,238,.35);color:#bdeefb}
+.note.warn{background:var(--amber-dim);border:1px solid rgba(251,191,36,.35);color:#fde9b8}
+.note code{font-family:var(--mono);font-size:.9em;background:rgba(0,0,0,.25);padding:1px 6px;border-radius:5px}
+
+/* toast */
+#toast{position:fixed;right:22px;bottom:22px;width:min(360px,calc(100vw - 44px));background:#131c30;border:1px solid var(--border2);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:100;transform:translateX(calc(100% + 30px));transition:transform .55s cubic-bezier(.2,.9,.25,1);overflow:hidden}
+#toast.show{transform:none}
+.toast-top{display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(52,211,153,.08);border-bottom:1px solid var(--border)}
+.toast-top .gmark{width:30px;height:30px;border-radius:8px;background:var(--green-dim);border:1px solid rgba(52,211,153,.4);display:flex;align-items:center;justify-content:center;flex:none}
+.toast-top b{font-size:13.5px}
+.toast-top small{display:block;color:var(--muted2);font-size:11.5px;font-weight:400}
+#toastClose{margin-left:auto;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:4px}
+#toastClose:hover{color:var(--text)}
+.toast-body{padding:14px;font-size:13px;color:var(--muted)}
+.toast-body b{color:var(--text)}
+.toast-body .trow{margin-bottom:6px}
+.toast-body .trow:last-child{margin-bottom:0}
+
+/* response + log */
+.sim-lower{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:960px){.sim-lower{grid-template-columns:1fr}}
+.resp{display:none}
+.resp.show{display:block;animation:fadeup .4s ease}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.resp-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.pill{font-family:var(--mono);font-size:13px;font-weight:700;padding:4px 14px;border-radius:999px}
+.pill.ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(52,211,153,.4)}
+.pill.bad{background:var(--red-dim);color:var(--red);border:1px solid rgba(248,113,113,.4)}
+.code{background:#070c15;border:1px solid var(--border);border-radius:12px;padding:16px 18px;font-family:var(--mono);font-size:13px;line-height:1.7;overflow-x:auto;white-space:pre;color:#c9d6ec}
+.code .k{color:var(--violet)} .code .s{color:var(--green)} .code .n{color:var(--amber)} .code .b{color:var(--accent)}
+#eventLog{max-height:300px;overflow-y:auto;padding-right:6px}
+.log-item{display:flex;gap:12px;padding:9px 0;border-bottom:1px dashed var(--border);font-size:13px;animation:fadeup .3s ease}
+.log-item:last-child{border-bottom:none}
+.log-time{font-family:var(--mono);color:var(--muted2);font-size:11.5px;flex:none;padding-top:2px}
+.ltag{flex:none;font-size:10.5px;font-weight:800;letter-spacing:1px;padding:2px 9px;border-radius:6px;height:fit-content;margin-top:1px}
+.ltag.t-form{background:rgba(167,139,250,.14);color:var(--violet)}
+.ltag.t-webhook{background:var(--accent-dim);color:var(--accent)}
+.ltag.t-validate{background:var(--amber-dim);color:var(--amber)}
+.ltag.t-sheets{background:var(--green-dim);color:var(--green)}
+.ltag.t-gmail{background:rgba(52,211,153,.14);color:var(--green)}
+.ltag.t-response{background:rgba(143,155,179,.14);color:var(--muted)}
+.ltag.t-error{background:var(--red-dim);color:var(--red)}
+.log-msg{color:#c4cede}
+.log-msg.err{color:#f3b8b8}
+
+/* ---------- how it works ---------- */
+.arch{display:flex;flex-direction:column;gap:0;margin-bottom:40px}
+.arch-row{display:flex;align-items:stretch;gap:14px}
+.arch-node{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;min-width:0}
+.arch-node h4{font-size:14.5px;margin-bottom:4px}
+.arch-node p{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+.arch-node.hl{border-color:rgba(34,211,238,.5);background:linear-gradient(180deg,rgba(34,211,238,.07),var(--panel))}
+.arch-arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;flex:none;width:30px}
+.arch-branch{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:700px){.arch-branch{grid-template-columns:1fr}}
+.rules-table{width:100%;border-collapse:collapse;font-size:14px}
+.rules-table th{text-align:left;padding:11px 14px;color:var(--muted);font-size:12.5px;border-bottom:1px solid var(--border);font-weight:600}
+.rules-table td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.rules-table tr:last-child td{border-bottom:none}
+.rules-table td:first-child{font-family:var(--mono);font-size:13px;color:var(--accent);white-space:nowrap}
+.rules-table td:last-child{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.formula-note{margin-top:16px;font-size:13.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.formula-note code{font-family:var(--mono);color:var(--green);font-size:.92em}
+
+/* ---------- error cards ---------- */
+.err-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:900px){.err-grid{grid-template-columns:1fr}}
+.err-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:12px}
+.err-card .eicon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.err-card h3{font-size:17px}
+.err-card p{font-size:14px;color:var(--muted);flex:none}
+.err-card .code{font-size:11.5px;padding:12px 14px;margin-top:auto}
+
+/* ---------- files ---------- */
+.file-list{display:flex;flex-direction:column}
+.file-row{display:flex;align-items:center;gap:14px;padding:14px 6px;border-bottom:1px solid var(--border);font-size:14.5px}
+.file-row:last-child{border-bottom:none}
+.file-row .fic{flex:none;width:38px;height:38px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+.file-row a{font-family:var(--mono);font-size:13.5px;word-break:break-all}
+.file-row .fdesc{margin-left:auto;color:var(--muted2);font-size:12.5px;text-align:right;flex:none}
+@media(max-width:640px){.file-row .fdesc{display:none}}
+
+/* ---------- footer cta ---------- */
+.cta{background:linear-gradient(160deg,#0e1626,#0a0e17);border:1px solid var(--border2);border-radius:22px;padding:64px 32px;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;inset:0;background:radial-gradient(500px 240px at 50% 0,rgba(34,211,238,.14),transparent 70%);pointer-events:none}
+.cta h2{font-size:clamp(26px,3.6vw,38px);letter-spacing:-.8px;margin-bottom:12px;position:relative}
+.cta p{color:var(--muted);max-width:560px;margin:0 auto 28px;position:relative}
+.cta .row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative}
+.fine{margin-top:26px;font-size:12.5px;color:var(--muted2);position:relative}
+footer{padding:34px 0 44px;text-align:center;color:var(--muted2);font-size:13px;border-top:1px solid var(--border);margin-top:64px}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" fill="rgba(34,211,238,.14)" stroke="#22d3ee" stroke-width="1.6"/><path d="M13 5 7 13.5h4L11 19l6-8.5h-4L13 5z" fill="#22d3ee"/></svg>
+      OrderFlow <small>· n8n template</small>
+    </a>
+    <div class="nav-links">
+      <a href="#demo">Live demo</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#error-handling">Error handling</a>
+      <a href="#files">Files</a>
+      <a class="btn btn-primary btn-sm" href="#cta">Get the workflow</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="badge"><span class="dot"></span> n8n workflow template · import &amp; configure</div>
+    <h1>Retail Order <span class="grad">Automation</span></h1>
+    <p class="lede">n8n workflow: <code>webhook → validation → Google Sheets → Gmail</code>.<br>New orders are validated, stored, and notified — no manual copy-paste.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#demo">Try the live simulation</a>
+      <a class="btn btn-ghost" href="README.md">Read the setup guide</a>
+    </div>
+    <div class="hero-pipe">
+      <svg viewBox="0 0 1040 172" role="img" aria-label="Pipeline: Order Form to Webhook to Validate to Google Sheets to Gmail">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a3a58"/></marker>
+        </defs>
+        <!-- connectors -->
+        <g stroke="#2a3a58" stroke-width="2">
+          <line x1="182" y1="86" x2="218" y2="86" marker-end="url(#arr)"/>
+          <line x1="392" y1="86" x2="428" y2="86" marker-end="url(#arr)"/>
+          <line x1="602" y1="86" x2="638" y2="86" marker-end="url(#arr)"/>
+          <line x1="812" y1="86" x2="848" y2="86" marker-end="url(#arr)"/>
+        </g>
+        <!-- traveling dots -->
+        <g fill="#22d3ee">
+          <circle r="4.5"><animateMotion dur="2.6s" repeatCount="indefinite" path="M182,86 H218"/></circle>
+          <circle r="4.5"><animateMotion dur="2.6s" begin="-1.3s" repeatCount="indefinite" path="M182,86 H218"/></circle>
+          <circle r="4.5" fill="#a78bfa"><animateMotion dur="2.6s" begin="-0.4s" repeatCount="indefinite" path="M392,86 H428"/></circle>
+          <circle r="4.5" fill="#a78bfa"><animateMotion dur="2.6s" begin="-1.7s" repeatCount="indefinite" path="M392,86 H428"/></circle>
+          <circle r="4.5"><animateMotion dur="2.6s" begin="-0.8s" repeatCount="indefinite" path="M602,86 H638"/></circle>
+          <circle r="4.5"><animateMotion dur="2.6s" begin="-2.1s" repeatCount="indefinite" path="M602,86 H638"/></circle>
+          <circle r="4.5" fill="#34d399"><animateMotion dur="2.6s" begin="-1.1s" repeatCount="indefinite" path="M812,86 H848"/></circle>
+          <circle r="4.5" fill="#34d399"><animateMotion dur="2.6s" begin="-2.4s" repeatCount="indefinite" path="M812,86 H848"/></circle>
+        </g>
+        <!-- nodes -->
+        <g font-family="inherit" text-anchor="middle">
+          <g><rect x="12" y="36" width="170" height="100" rx="14" fill="#101827" stroke="#2a3a58" stroke-width="1.5"/><circle cx="97" cy="62" r="11" fill="rgba(34,211,238,.15)"/><text x="97" y="66" font-size="11" fill="#22d3ee" font-weight="800">▤</text><text x="97" y="100" font-size="14" font-weight="700" fill="#e8eef8">Order Form</text><text x="97" y="120" font-size="11" fill="#8f9bb3">customer checkout</text></g>
+          <g><rect x="222" y="36" width="170" height="100" rx="14" fill="#101827" stroke="#2a3a58" stroke-width="1.5"/><circle cx="307" cy="62" r="11" fill="rgba(167,139,250,.15)"/><text x="307" y="66" font-size="11" fill="#a78bfa" font-weight="800">⌁</text><text x="307" y="100" font-size="14" font-weight="700" fill="#e8eef8">Webhook</text><text x="307" y="120" font-size="11" fill="#8f9bb3">POST + header auth</text></g>
+          <g><rect x="432" y="36" width="170" height="100" rx="14" fill="#101827" stroke="#2a3a58" stroke-width="1.5"/><circle cx="517" cy="62" r="11" fill="rgba(251,191,36,.15)"/><text x="517" y="66" font-size="11" fill="#fbbf24" font-weight="800">✓</text><text x="517" y="100" font-size="14" font-weight="700" fill="#e8eef8">Validate</text><text x="517" y="120" font-size="11" fill="#8f9bb3">rules + normalize</text></g>
+          <g><rect x="642" y="36" width="170" height="100" rx="14" fill="#101827" stroke="#2a3a58" stroke-width="1.5"/><circle cx="727" cy="62" r="11" fill="rgba(52,211,153,.15)"/><text x="727" y="66" font-size="11" fill="#34d399" font-weight="800">▦</text><text x="727" y="100" font-size="14" font-weight="700" fill="#e8eef8">Google Sheets</text><text x="727" y="120" font-size="11" fill="#8f9bb3">upsert on order_id</text></g>
+          <g><rect x="852" y="36" width="170" height="100" rx="14" fill="#101827" stroke="#2a3a58" stroke-width="1.5"/><circle cx="937" cy="62" r="11" fill="rgba(52,211,153,.15)"/><text x="937" y="66" font-size="12" fill="#34d399" font-weight="800">@</text><text x="937" y="100" font-size="14" font-weight="700" fill="#e8eef8">Gmail</text><text x="937" y="120" font-size="11" fill="#8f9bb3">owner notification</text></g>
+        </g>
+      </svg>
+      <p class="pipe-caption">Live data flow — packets travel the pipeline continuously.</p>
+    </div>
+  </div>
+</header>
+
+<section class="section alt" id="demo">
+  <div class="wrap">
+    <p class="kicker">Interactive simulation</p>
+    <h2>Watch an order travel the pipeline</h2>
+    <p class="section-sub">A faithful front-end re-creation of the n8n workflow logic — same validation rules, same upsert behavior, same HTTP responses. The mock spreadsheet persists between runs, so try the <b>retry</b> scenario after a valid order.</p>
+
+    <div class="scenario-bar" id="scenarioBar">
+      <button class="sc-btn active" data-sc="valid">Valid order</button>
+      <button class="sc-btn" data-sc="invalid">Invalid order</button>
+      <button class="sc-btn" data-sc="retry">Retry same order_id</button>
+      <button class="sc-btn" data-sc="injection">Formula injection</button>
+    </div>
+
+    <div class="sim-grid">
+      <div class="card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          Mock order form
+        </h3>
+        <div class="form-grid">
+          <div class="field full"><label>order_id</label><input id="f_order_id" value="ORD-1001" spellcheck="false"></div>
+          <div class="field"><label>customer_name</label><input id="f_customer_name" value="Jane Smith" spellcheck="false"></div>
+          <div class="field"><label>customer_email</label><input id="f_customer_email" value="jane@example.com" spellcheck="false"></div>
+          <div class="field full"><label>product</label><input id="f_product" value="Wireless Keyboard" spellcheck="false"></div>
+          <div class="field"><label>quantity</label><input id="f_quantity" value="2" inputmode="numeric" spellcheck="false"></div>
+          <div class="field"><label>unit_price</label><input id="f_unit_price" value="39.5" inputmode="decimal" spellcheck="false"></div>
+          <div class="field"><label>currency <span class="opt">(optional)</span></label><input id="f_currency" value="USD" spellcheck="false"></div>
+          <div class="field"><label>notes <span class="opt">(optional)</span></label><input id="f_notes" value="Deliver during business hours" spellcheck="false"></div>
+        </div>
+        <div class="controls">
+          <button class="btn btn-primary btn-sm" id="btnSend">Send order</button>
+          <button class="btn btn-ghost btn-sm" id="btnReplay">Replay</button>
+          <label class="speed">Speed
+            <select id="speedSel">
+              <option value="1" selected>1x</option>
+              <option value="2">2x</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+          Pipeline execution
+        </h3>
+        <div class="pipe-scroll">
+          <div id="pipeRow">
+            <div id="packet"></div>
+            <div class="pnode" id="node-form">
+              <div class="pnode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+              <div class="pnode-label">Order Form</div><div class="pnode-sub">JSON payload</div><div class="pnode-state" id="state-form"></div>
+            </div>
+            <div class="plink"><span class="cdot"></span><span class="cdot c2"></span></div>
+            <div class="pnode" id="node-webhook">
+              <div class="pnode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8"><path d="M9 17H7a4 4 0 0 1 0-8h2M15 7h2a4 4 0 0 1 0 8h-2M8 12h8"/></svg></div>
+              <div class="pnode-label">Webhook</div><div class="pnode-sub">header auth</div><div class="pnode-state" id="state-webhook"></div>
+            </div>
+            <div class="plink"><span class="cdot"></span><span class="cdot c2"></span></div>
+            <div class="pnode" id="node-validate">
+              <div class="pnode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div>
+              <div class="pnode-label">Validate</div><div class="pnode-sub">rules + normalize</div><div class="pnode-state" id="state-validate"></div>
+            </div>
+            <div class="plink"><span class="cdot"></span><span class="cdot c2"></span></div>
+            <div class="pnode" id="node-sheets">
+              <div class="pnode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg></div>
+              <div class="pnode-label">Google Sheets</div><div class="pnode-sub">upsert order_id</div><div class="pnode-state" id="state-sheets"></div>
+            </div>
+            <div class="plink"><span class="cdot"></span><span class="cdot c2"></span></div>
+            <div class="pnode" id="node-gmail">
+              <div class="pnode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+              <div class="pnode-label">Gmail</div><div class="pnode-sub">notify owner</div><div class="pnode-state" id="state-gmail"></div>
+            </div>
+          </div>
+        </div>
+        <div id="checklistWrap">
+          <h3 style="margin:14px 0 6px;font-size:14px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+            Validation checklist <span style="color:var(--muted2);font-weight:400">— the real rules from the workflow</span>
+          </h3>
+          <div id="checklist"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:22px">
+      <div class="sheet-head">
+        <div class="tab">Orders</div>
+        <span>mock of the Google Sheet · upsert key: order_id · RAW cell format</span>
+      </div>
+      <div class="table-wrap">
+        <table class="sheet">
+          <thead><tr>
+            <th>received_at</th><th>order_id</th><th>customer_name</th><th>customer_email</th><th>product</th><th>quantity</th><th>unit_price</th><th>currency</th><th>total_amount</th><th>notes</th>
+          </tr></thead>
+          <tbody id="sheetBody">
+            <tr><td colspan="10"><div class="sheet-empty">No rows yet — send a valid order to write the first row.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note info" id="sheetNote"></div>
+    </div>
+
+    <div class="sim-lower">
+      <div class="card resp" id="respPanel">
+        <div class="resp-head">
+          <h3 style="margin:0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8"><path d="M4 12l5 5L20 6"/></svg>
+            Webhook response
+          </h3>
+          <span class="pill ok" id="respCode">200</span>
+        </div>
+        <div class="code" id="respBody"></div>
+      </div>
+      <div class="card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          Event log
+        </h3>
+        <div id="eventLog"><div class="sheet-empty" style="padding:12px">Run a scenario to see every stage with timestamps.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="toast" role="status" aria-live="polite">
+  <div class="toast-top">
+    <div class="gmark"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+    <div><b>Gmail</b><small>to owner@store.example</small></div>
+    <button id="toastClose" aria-label="Dismiss notification">&times;</button>
+  </div>
+  <div class="toast-body">
+    <div class="trow"><b id="toastSubject">New order</b></div>
+    <div class="trow" id="toastBody"></div>
+  </div>
+</div>
+
+<section class="section" id="how-it-works">
+  <div class="wrap">
+    <p class="kicker">How it works</p>
+    <h2>The workflow, node by node</h2>
+    <p class="section-sub">Exactly what the importable n8n workflow does once configured — the same structure the simulation above re-creates.</p>
+
+    <div class="arch">
+      <div class="arch-row">
+        <div class="arch-node hl"><h4>1 · Receive New Order</h4><p>POST /webhook/new-customer-order · Header Auth (X-Order-Webhook-Key)</p></div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node hl"><h4>2 · Validate &amp; Normalize</h4><p>Code node · trims, strips control chars, checks every rule, computes total_amount</p></div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-node hl"><h4>3 · Order Valid?</h4><p>IF node · routes on the valid flag</p></div>
+      </div>
+      <div class="arch-branch">
+        <div class="arch-node" style="border-color:rgba(52,211,153,.4)">
+          <h4>Valid → Save Order to Google Sheets</h4>
+          <p>appendOrUpdate · matching column: order_id · cell format: RAW<br>↓ then Notify Business Owner (Gmail) ↓<br>200 — order processed</p>
+        </div>
+        <div class="arch-node" style="border-color:rgba(248,113,113,.4)">
+          <h4>Invalid → 400 response</h4>
+          <p>nothing is written, no email is sent<br>error list returned in the body</p>
+        </div>
+      </div>
+      <div class="arch-branch">
+        <div class="arch-node" style="border-color:rgba(251,191,36,.4)">
+          <h4>Sheets write fails → 502</h4>
+          <p>no notification is sent · safe to retry with the same order_id</p>
+        </div>
+        <div class="arch-node" style="border-color:rgba(251,191,36,.4)">
+          <h4>Gmail fails → 502 partial failure</h4>
+          <p>order is already stored · check notification state before retrying</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+        Validation rules (from the workflow code)
+      </h3>
+      <div style="overflow-x:auto">
+      <table class="rules-table">
+        <thead><tr><th>Field</th><th>Required</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td>order_id</td><td>Yes</td><td>/^[A-Za-z0-9_-]{1,64}$/</td></tr>
+          <tr><td>customer_name</td><td>Yes</td><td>non-empty string (trimmed, max 120)</td></tr>
+          <tr><td>customer_email</td><td>Yes</td><td>simple email format check, lowercased</td></tr>
+          <tr><td>product</td><td>Yes</td><td>non-empty string (trimmed, max 180)</td></tr>
+          <tr><td>quantity</td><td>Yes</td><td>integer, 1 – 10,000</td></tr>
+          <tr><td>unit_price</td><td>Yes</td><td>finite number, 0 – 1,000,000,000</td></tr>
+          <tr><td>currency</td><td>No</td><td>3-letter code, defaults to USD</td></tr>
+          <tr><td>notes</td><td>No</td><td>max 500 characters stored</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="formula-note"><code>total_amount = round(quantity × unit_price, 2)</code> · single product per order, no tax / discount / shipping in this MVP.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="error-handling">
+  <div class="wrap">
+    <p class="kicker">Error handling</p>
+    <h2>Every failure has a defined response</h2>
+    <p class="section-sub">The workflow never fails silently. Each stage has its own HTTP response with a machine-readable body — the exact bodies from the workflow:</p>
+    <div class="err-grid">
+      <div class="err-card">
+        <div class="eicon" style="background:var(--red-dim);border:1px solid rgba(248,113,113,.4)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+        </div>
+        <h3>400 · Invalid order</h3>
+        <p>Validation fails → the webhook answers immediately. <b>No sheet write, no email.</b> The body lists every broken rule so the sender can fix and resend.</p>
+        <div class="code">{
+  <span class="k">"status"</span>: <span class="s">"rejected"</span>,
+  <span class="k">"errors"</span>: [
+    <span class="s">"customer_email must be valid"</span>,
+    ...
+  ]
+}</div>
+      </div>
+      <div class="err-card">
+        <div class="eicon" style="background:var(--amber-dim);border:1px solid rgba(251,191,36,.4)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
+        </div>
+        <h3>502 · Sheets failure</h3>
+        <p>The spreadsheet write fails → <b>no notification is sent</b>, so the owner is never told about an order that was not stored. Safe to retry with the same <span style="font-family:var(--mono)">order_id</span>.</p>
+        <div class="code">{
+  <span class="k">"status"</span>: <span class="s">"error"</span>,
+  <span class="k">"stage"</span>: <span class="s">"google_sheets"</span>,
+  <span class="k">"message"</span>: <span class="s">"Order storage failed;
+    use the same order_id
+    for a safe retry."</span>
+}</div>
+      </div>
+      <div class="err-card">
+        <div class="eicon" style="background:var(--amber-dim);border:1px solid rgba(251,191,36,.4)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        </div>
+        <h3>502 · Gmail failure</h3>
+        <p>Email fails <b>after</b> the sheet write → the order is already stored. The partial-failure flag warns you to check notification state <b>before</b> retrying.</p>
+        <div class="code">{
+  <span class="k">"status"</span>: <span class="s">"partial_failure"</span>,
+  <span class="k">"stage"</span>: <span class="s">"email"</span>,
+  <span class="k">"saved"</span>: <span class="b">true</span>,
+  <span class="k">"notified"</span>: <span class="b">false</span>,
+  <span class="k">"message"</span>: <span class="s">"Order stored but
+    notification failed..."</span>
+}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="files">
+  <div class="wrap">
+    <p class="kicker">What's in the box</p>
+    <h2>Everything needed to deploy it</h2>
+    <p class="section-sub">The full repository behind this demo — importable workflow, sample payloads, runnable tests, and client-ready docs.</p>
+    <div class="card"><div class="file-list">
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg></div><a href="workflow/order_processing_n8n_workflow.json" download>workflow/order_processing_n8n_workflow.json</a><span class="fdesc">Import into n8n (Workflows → Import from File)</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z"/><path d="M14 3v6h6"/></svg></div><a href="workflow/samples/valid_order.json">workflow/samples/valid_order.json</a><span class="fdesc">Sample: valid order (ORD-1001)</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z"/><path d="M14 3v6h6"/></svg></div><a href="workflow/samples/invalid_order.json">workflow/samples/invalid_order.json</a><span class="fdesc">Sample: invalid order (7 broken rules)</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6z"/><path d="M14 3v6h6"/></svg></div><a href="workflow/samples/valid_retry.json">workflow/samples/valid_retry.json</a><span class="fdesc">Sample: duplicate retry of ORD-1001</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2V9l-6-6z"/><path d="M14 3v6h6"/></svg></div><a href="workflow/samples/formula_injection.json">workflow/samples/formula_injection.json</a><span class="fdesc">Sample: formula-injection attempt</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg></div><a href="workflow/run_local_tests.js">workflow/run_local_tests.js</a><span class="fdesc">Run: node run_local_tests.js (from workflow/)</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8"><path d="M4 4h16v16H4z" stroke-dasharray="0"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div><a href="README.md">README.md</a><span class="fdesc">Full setup guide + acceptance checklist</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div><a href="PROPOSAL.md">PROPOSAL.md</a><span class="fdesc">Client proposal draft</span></div>
+      <div class="file-row"><div class="fic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div><a href="CLIENT_QUESTIONS.md">CLIENT_QUESTIONS.md</a><span class="fdesc">Discovery questions for clients</span></div>
+    </div></div>
+  </div>
+</section>
+
+<section class="section" id="cta" style="padding-top:0">
+  <div class="wrap">
+    <div class="cta">
+      <h2>Want this for your store?</h2>
+      <p>Import the workflow into n8n, connect your Google Sheet and Gmail, and every order is validated, stored, and notified automatically — in seconds.</p>
+      <div class="row">
+        <a class="btn btn-primary" href="workflow/order_processing_n8n_workflow.json" download>Download the workflow JSON</a>
+        <a class="btn btn-ghost" href="README.md">Setup instructions</a>
+      </div>
+      <p class="fine">This demo runs entirely in your browser — no data leaves this page. The production workflow requires your own n8n instance, Google Sheets access, and Gmail authorization.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Retail Order Automation · n8n workflow template · Built as a portfolio piece — validation logic mirrors the importable workflow exactly.
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);};
+
+/* ---------- scenario payloads (exact copies of workflow/samples/*.json) ---------- */
+var SCENARIOS={
+  valid:{payload:{order_id:"ORD-1001",customer_name:"Jane Smith",customer_email:"jane@example.com",product:"Wireless Keyboard",quantity:2,unit_price:39.5,currency:"USD",notes:"Deliver during business hours"}},
+  invalid:{payload:{order_id:"BAD/ID",customer_name:"",customer_email:"not-an-email",product:"",quantity:0,unit_price:-5,currency:"US"}},
+  retry:{payload:{order_id:"ORD-1001",customer_name:"Jane Smith",customer_email:"jane@example.com",product:"Wireless Keyboard",quantity:2,unit_price:39.5,currency:"USD",notes:"Updated delivery instructions"}},
+  injection:{payload:{order_id:"ORD-1002",customer_name:"=IMPORTXML(\"https://example.net\", \"//*\")",customer_email:"client@example.com",product:"=1+1",quantity:1,unit_price:1,currency:"USD"}}
+};
+
+var NODES=["form","webhook","validate","sheets","gmail"];
+var running=false, speed=1, currentScenario="valid", runToken=0;
+var sheetRows=[];   /* mock spreadsheet — persists across runs in this session */
+var timers=[];
+
+function sleep(ms){return new Promise(function(res){var t=setTimeout(res,ms/speed);timers.push(t);});}
+function alive(my){return my===runToken;}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* ---------- event log ---------- */
+function logEvent(stage,msg,isErr){
+  var log=$("eventLog");
+  var ph=log.querySelector(".sheet-empty"); if(ph) ph.remove();
+  var item=document.createElement("div"); item.className="log-item";
+  var t=document.createElement("span"); t.className="log-time";
+  t.textContent=new Date().toLocaleTimeString("en-GB",{hour12:false});
+  var tag=document.createElement("span"); tag.className="ltag t-"+stage; tag.textContent=stage.toUpperCase();
+  var m=document.createElement("div"); m.className="log-msg"+(isErr?" err":""); m.textContent=msg;
+  item.appendChild(t); item.appendChild(tag); item.appendChild(m);
+  log.appendChild(item); log.scrollTop=log.scrollHeight;
+}
+
+/* ---------- pipeline nodes & packet ---------- */
+function setNode(id,state){
+  var el=$("node-"+id); if(!el) return;
+  el.classList.remove("is-active","is-done","is-error");
+  var st=$("state-"+id);
+  if(state==="active"){el.classList.add("is-active");st.textContent="working\u2026";}
+  else if(state==="done"){el.classList.add("is-done");st.textContent="done";}
+  else if(state==="error"){el.classList.add("is-error");st.textContent="failed";}
+  else st.textContent="";
+}
+function placePacket(id){
+  var node=$("node-"+id),pk=$("packet");
+  pk.style.transition="none";
+  pk.style.left=(node.offsetLeft+node.offsetWidth/2)+"px";
+  pk.style.top=(node.offsetTop+node.offsetHeight/2)+"px";
+  void pk.offsetWidth;
+  pk.style.transition="";
+  pk.classList.add("show"); pk.classList.remove("bad");
+}
+function hidePacket(){$("packet").classList.remove("show");}
+function hop(id){
+  return new Promise(function(resolve){
+    var node=$("node-"+id),pk=$("packet");
+    pk.style.transitionDuration=(0.5/speed)+"s";
+    pk.style.left=(node.offsetLeft+node.offsetWidth/2)+"px";
+    pk.style.top=(node.offsetTop+node.offsetHeight/2)+"px";
+    timers.push(setTimeout(resolve,560/speed));
+  });
+}
+
+/* ---------- validation (mirrors the workflow's Code node) ---------- */
+function validateOrder(d){
+  var errors=[],checks=[];
+  var str=function(v,max){return String(v==null?"":v).trim().replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,"").slice(0,max);};
+  var order_id=str(d.order_id,64);
+  var customer_name=str(d.customer_name,120);
+  var customer_email=str(d.customer_email,254).toLowerCase();
+  var product=str(d.product,180);
+  var notes=str(d.notes,500);
+  var currency=str(d.currency==null?"USD":d.currency,3).toUpperCase();
+  var quantity=Number(d.quantity), unit_price=Number(d.unit_price);
+  var push=function(label,pass,detail){checks.push({label:label,pass:pass,detail:detail});if(!pass)errors.push(detail);};
+  push("order_id matches ^[A-Za-z0-9_-]{1,64}$",/^[a-zA-Z0-9_-]{1,64}$/.test(order_id),"order_id must be 1-64 letters, numbers, _ or -");
+  push("customer_name is present",!!customer_name,"customer_name is required");
+  push("customer_email has valid format",/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer_email),"customer_email must be valid");
+  push("product is present",!!product,"product is required");
+  push("quantity is an integer 1\u201310000",Number.isInteger(quantity)&&quantity>=1&&quantity<=10000,"quantity must be an integer between 1 and 10000");
+  push("unit_price is 0 \u2013 1,000,000,000",d.unit_price!==""&&d.unit_price!=null&&isFinite(unit_price)&&unit_price>=0&&unit_price<=1e9,"unit_price must be a number from 0 to 1000000000");
+  push("currency is a 3-letter code",/^[A-Z]{3}$/.test(currency),"currency must be a three-letter code");
+  var valid=errors.length===0;
+  return{valid:valid,errors:errors,checks:checks,norm:{
+    received_at:new Date().toISOString(),order_id:order_id,customer_name:customer_name,
+    customer_email:customer_email,product:product,
+    quantity:valid?quantity:null,unit_price:valid?unit_price:null,currency:currency,
+    total_amount:valid?Math.round(quantity*unit_price*100)/100:null,notes:notes}};
+}
+function addCheckItem(label){
+  var li=document.createElement("div"); li.className="check-item";
+  var ck=document.createElement("span"); ck.className="ck run";
+  var tx=document.createElement("div"); tx.className="ctx";
+  var r=document.createElement("div"); r.className="rule"; r.textContent=label;
+  tx.appendChild(r); li.appendChild(ck); li.appendChild(tx);
+  $("checklist").appendChild(li);
+  return li;
+}
+function markCheck(li,c){
+  var ck=li.querySelector(".ck"); ck.classList.remove("run");
+  if(c.pass){ck.classList.add("ok");ck.textContent="\u2713";}
+  else{ck.classList.add("no");ck.textContent="\u00d7";
+    var m=document.createElement("div"); m.className="msg"; m.textContent=c.detail;
+    li.querySelector(".ctx").appendChild(m);}
+}
+
+/* ---------- mock spreadsheet ---------- */
+var SHEET_COLS=["received_at","order_id","customer_name","customer_email","product","quantity","unit_price","currency","total_amount","notes"];
+function renderSheet(flashId){
+  var tb=$("sheetBody"); tb.innerHTML="";
+  sheetRows.forEach(function(r){
+    var tr=document.createElement("tr");
+    if(r.order_id===flashId) tr.className="row-flash";
+    SHEET_COLS.forEach(function(c){
+      var td=document.createElement("td"),val=r[c];
+      if(c==="received_at"){try{val=new Date(val).toLocaleString("en-GB",{hour12:false});}catch(e){}}
+      td.textContent=(val===null||val===undefined)?"":val;
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+}
+function upsertRow(row){
+  var i=-1;
+  for(var k=0;k<sheetRows.length;k++){if(sheetRows[k].order_id===row.order_id){i=k;break;}}
+  var updated=i>=0;
+  if(updated){sheetRows[i]=Object.assign({},sheetRows[i],row);}
+  else{sheetRows.push(Object.assign({},row));}
+  renderSheet(row.order_id);
+  return updated;
+}
+function showNote(kind,html){
+  var n=$("sheetNote"); n.className="note show "+kind; n.innerHTML=html;
+}
+
+/* ---------- response panel ---------- */
+function hljson(obj){
+  var s=JSON.stringify(obj,null,2).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  s=s.replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+     .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
+     .replace(/: (-?\d[\d.]*)/g,': <span class="n">$1</span>')
+     .replace(/: (true|false|null)/g,': <span class="b">$1</span>');
+  return s;
+}
+function showResponse(code,obj){
+  $("respPanel").classList.add("show");
+  var pill=$("respCode"); pill.textContent=code;
+  pill.className="pill "+(code===200?"ok":"bad");
+  $("respBody").innerHTML=hljson(obj);
+}
+
+/* ---------- gmail toast ---------- */
+function showToast(n){
+  $("toastSubject").textContent="New order "+n.order_id+" \u2014 "+n.currency+" "+n.total_amount;
+  var tb=$("toastBody"); tb.innerHTML="";
+  [["Customer",n.customer_name+" ("+n.customer_email+")"],
+   ["Item",n.product+" \u00d7 "+n.quantity+" @ "+n.unit_price],
+   ["Total",n.currency+" "+n.total_amount+(n.notes?" \u2014 "+n.notes:"")]
+  ].forEach(function(pair){
+    var d=document.createElement("div"); d.className="trow";
+    var b=document.createElement("b"); b.textContent=pair[0]+": ";
+    d.appendChild(b); d.appendChild(document.createTextNode(pair[1]));
+    tb.appendChild(d);
+  });
+  $("toast").classList.add("show");
+  timers.push(setTimeout(function(){$("toast").classList.remove("show");},6500/speed));
+}
+
+/* ---------- form ---------- */
+function fillForm(p){
+  $("f_order_id").value=p.order_id==null?"":p.order_id;
+  $("f_customer_name").value=p.customer_name==null?"":p.customer_name;
+  $("f_customer_email").value=p.customer_email==null?"":p.customer_email;
+  $("f_product").value=p.product==null?"":p.product;
+  $("f_quantity").value=p.quantity==null?"":p.quantity;
+  $("f_unit_price").value=p.unit_price==null?"":p.unit_price;
+  $("f_currency").value=p.currency==null?"":p.currency;
+  $("f_notes").value=p.notes==null?"":p.notes;
+}
+function readForm(){
+  var v=function(id){return $(id).value;};
+  var num=function(s){s=s.trim();return s===""?"":Number(s);};
+  return{order_id:v("f_order_id"),customer_name:v("f_customer_name"),customer_email:v("f_customer_email"),
+    product:v("f_product"),quantity:num(v("f_quantity")),unit_price:num(v("f_unit_price")),
+    currency:v("f_currency"),notes:v("f_notes")};
+}
+
+/* ---------- reset & controls ---------- */
+function resetVisuals(){
+  timers.forEach(clearTimeout); timers=[];
+  $("eventLog").innerHTML="";
+  $("checklist").innerHTML=""; $("checklistWrap").classList.remove("show");
+  $("respPanel").classList.remove("show");
+  $("toast").classList.remove("show");
+  var n=$("sheetNote"); n.className="note"; n.innerHTML="";
+  var pk=$("packet"); pk.style.transitionDuration="";
+  NODES.forEach(function(id){setNode(id,"idle");});
+  placePacket("form");
+}
+function setControls(en){
+  var btns=document.querySelectorAll(".sc-btn");
+  for(var i=0;i<btns.length;i++) btns[i].disabled=!en;
+  $("btnSend").disabled=!en; $("btnReplay").disabled=!en;
+}
+function setActiveScenario(key){
+  currentScenario=key;
+  var btns=document.querySelectorAll(".sc-btn");
+  for(var i=0;i<btns.length;i++) btns[i].classList.toggle("active",btns[i].getAttribute("data-sc")===key);
+}
+
+/* ---------- main run ---------- */
+async function runScenario(key,overridePayload){
+  if(running) return;
+  running=true; var my=++runToken;
+  setControls(false);
+  resetVisuals();
+  var payload=overridePayload||JSON.parse(JSON.stringify(SCENARIOS[key].payload));
+  if(!overridePayload) fillForm(payload);
+  try{
+    logEvent("form","Payload ready \u2014 order "+(payload.order_id||"(missing id)"));
+    placePacket("form");
+    setNode("form","active"); await hop("form"); if(!alive(my))return; await sleep(420); if(!alive(my))return;
+    logEvent("form","Order submitted as JSON to the webhook");
+    setNode("form","done");
+
+    setNode("webhook","active"); await hop("webhook"); if(!alive(my))return; await sleep(620); if(!alive(my))return;
+    logEvent("webhook","POST /webhook/new-customer-order \u2014 header X-Order-Webhook-Key accepted");
+    setNode("webhook","done");
+
+    setNode("validate","active"); await hop("validate"); if(!alive(my))return;
+    $("checklistWrap").classList.add("show");
+    logEvent("validate","Validating and normalizing fields\u2026");
+    var res=validateOrder(payload),failed=false;
+    for(var i=0;i<res.checks.length;i++){
+      var li=addCheckItem(res.checks[i].label);
+      await sleep(330); if(!alive(my))return;
+      markCheck(li,res.checks[i]);
+      if(!res.checks[i].pass){failed=true;logEvent("validate","Rejected: "+res.checks[i].detail,true);}
+    }
+    if(!res.valid){
+      setNode("validate","error"); $("packet").classList.add("bad");
+      logEvent("response","Validation failed \u2014 nothing written, no email sent",true);
+      showResponse(400,{status:"rejected",errors:res.errors});
+      logEvent("error","HTTP 400 returned with the full error list",true);
+      await sleep(500);
+      return;
+    }
+    setNode("validate","done");
+    logEvent("validate","All rules passed \u2014 total_amount = "+res.norm.total_amount);
+
+    setNode("sheets","active"); await hop("sheets"); if(!alive(my))return; await sleep(520); if(!alive(my))return;
+    var updated=upsertRow(res.norm);
+    if(updated){
+      logEvent("sheets","order_id "+res.norm.order_id+" exists \u2014 row updated in place");
+      showNote("info","<b>Upsert, not append:</b> the row for <code>"+esc(res.norm.order_id)+"</code> was updated in place \u2014 no duplicate row was added.");
+    }else{
+      logEvent("sheets","Row written \u2014 total_amount "+res.norm.total_amount+" computed as round(qty \u00d7 price, 2)");
+      if(key==="retry") showNote("info","No existing row for <code>"+esc(res.norm.order_id)+"</code> in this session, so it was inserted as a new row. Run the <b>Valid order</b> scenario first, then retry it to see the in-place update.");
+    }
+    if(key==="injection"){
+      showNote("warn","<b>Formula-injection neutralized:</b> the workflow writes cells with <code>RAW</code> formatting, so values like <code>=1+1</code> and <code>=IMPORTXML(...)</code> are stored as plain text \u2014 never evaluated as spreadsheet formulas.");
+      logEvent("sheets","RAW cell format \u2014 formula-like values stored as plain text");
+    }
+    setNode("sheets","done");
+
+    setNode("gmail","active"); await hop("gmail"); if(!alive(my))return; await sleep(560); if(!alive(my))return;
+    showToast(res.norm);
+    logEvent("gmail","Notification email sent to the business owner");
+    setNode("gmail","done");
+    hidePacket();
+    showResponse(200,{status:"success",order_id:res.norm.order_id,saved:true,notified:true});
+    logEvent("response","HTTP 200 \u2014 workflow complete");
+  }finally{
+    if(alive(my)){running=false;setControls(true);}
+  }
+}
+
+/* ---------- wiring ---------- */
+var scBtns=document.querySelectorAll("#scenarioBar .sc-btn");
+for(var b=0;b<scBtns.length;b++){
+  (function(btn){
+    btn.addEventListener("click",function(){
+      if(running) return;
+      setActiveScenario(btn.getAttribute("data-sc"));
+      runScenario(currentScenario);
+    });
+  })(scBtns[b]);
+}
+$("btnSend").addEventListener("click",function(){
+  if(running) return;
+  runScenario(currentScenario,readForm());
+});
+$("btnReplay").addEventListener("click",function(){
+  if(running) return;
+  runScenario(currentScenario);
+});
+$("speedSel").addEventListener("change",function(e){speed=Number(e.target.value)||1;});
+$("toastClose").addEventListener("click",function(){$("toast").classList.remove("show");});
+})();
+</script>
+</body>
+</html>

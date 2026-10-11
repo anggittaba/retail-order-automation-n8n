@@ -1,0 +1,383 @@
+{
+  "name": "Retail Order Processing - Webhook → Validation → Google Sheets → Gmail",
+  "nodes": [
+    {
+      "id": "c702ddc3-ed0b-4e50-9fe3-c25c625c2439",
+      "name": "Receive New Order",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1100,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-customer-order",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "retail-order-demo"
+    },
+    {
+      "id": "12076fe5-eeca-4f78-b5d4-eded41e38091",
+      "name": "Validate & Normalize Order",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -860,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Runs once per incoming POST webhook event.\nconst incoming = $input.first().json;\nconst data = incoming.body && typeof incoming.body === 'object' && !Array.isArray(incoming.body)\n  ? incoming.body : incoming;\nconst errors = [];\nconst str = (v, max) => String(v ?? '').trim().replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, '').slice(0, max);\nconst order_id = str(data.order_id, 64);\nconst customer_name = str(data.customer_name, 120);\nconst customer_email = str(data.customer_email, 254).toLowerCase();\nconst product = str(data.product, 180);\nconst notes = str(data.notes, 500);\nconst currency = str(data.currency ?? 'USD', 3).toUpperCase();\nconst quantity = Number(data.quantity);\nconst unit_price = Number(data.unit_price);\n\nif (!/^[a-zA-Z0-9_-]{1,64}$/.test(order_id)) errors.push('order_id must be 1-64 letters, numbers, _ or -');\nif (!customer_name) errors.push('customer_name is required');\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(customer_email)) errors.push('customer_email must be valid');\nif (!product) errors.push('product is required');\nif (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) errors.push('quantity must be an integer between 1 and 10000');\nif (data.unit_price === '' || data.unit_price == null || !Number.isFinite(unit_price) || unit_price < 0 || unit_price > 1000000000) errors.push('unit_price must be a number from 0 to 1000000000');\nif (!/^[A-Z]{3}$/.test(currency)) errors.push('currency must be a three-letter code');\n\nconst valid = errors.length === 0;\nreturn [{json: {\n  valid,\n  errors,\n  received_at: new Date().toISOString(),\n  order_id,\n  customer_name,\n  customer_email,\n  product,\n  quantity: valid ? quantity : null,\n  unit_price: valid ? unit_price : null,\n  currency,\n  total_amount: valid ? Math.round(quantity * unit_price * 100) / 100 : null,\n  notes\n}}];",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "ccc2f969-3d15-440b-a387-a3d3c6e5a9fc",
+      "name": "Order Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -620,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "04d2b657-9faa-47bb-82f4-3538637fb2c8",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b7179827-5ebb-40ca-a7b7-8ec354a46da4",
+      "name": "Save Order to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -350,
+        -140
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Orders",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "received_at": "={ $json.received_at }",
+            "order_id": "={ $json.order_id }",
+            "customer_name": "={ $json.customer_name }",
+            "customer_email": "={ $json.customer_email }",
+            "product": "={ $json.product }",
+            "quantity": "={ $json.quantity }",
+            "unit_price": "={ $json.unit_price }",
+            "currency": "={ $json.currency }",
+            "total_amount": "={ $json.total_amount }",
+            "notes": "={ $json.notes }"
+          },
+          "matchingColumns": [
+            "order_id"
+          ],
+          "schema": [
+            {
+              "id": "received_at",
+              "displayName": "received_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_id",
+              "displayName": "order_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "product",
+              "displayName": "product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unit_price",
+              "displayName": "unit_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_amount",
+              "displayName": "total_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "58a54c38-6f84-4faa-91cf-46e75f28377a",
+      "name": "Notify Business Owner (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -80,
+        -140
+      ],
+      "parameters": {
+        "sendTo": "owner@example.com",
+        "subject": "={{ 'New Customer Order - ' + $('Validate & Normalize Order').first().json.order_id }}",
+        "emailType": "text",
+        "message": "={{ 'A new order was received and saved.\\n\\nOrder ID: ' + $('Validate & Normalize Order').first().json.order_id + '\\nCustomer: ' + $('Validate & Normalize Order').first().json.customer_name + '\\nEmail: ' + $('Validate & Normalize Order').first().json.customer_email + '\\nProduct: ' + $('Validate & Normalize Order').first().json.product + '\\nQuantity: ' + $('Validate & Normalize Order').first().json.quantity + '\\nUnit price: ' + $('Validate & Normalize Order').first().json.currency + ' ' + $('Validate & Normalize Order').first().json.unit_price + '\\nOrder total: ' + $('Validate & Normalize Order').first().json.currency + ' ' + $('Validate & Normalize Order').first().json.total_amount + '\\nNotes: ' + $('Validate & Normalize Order').first().json.notes + '\\nReceived: ' + $('Validate & Normalize Order').first().json.received_at }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "f291a2a6-a847-4a25-929a-9bb6c278ecd0",
+      "name": "200 - Order Processed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        190,
+        -140
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', order_id: $('Validate & Normalize Order').first().json.order_id, saved: true, notified: true }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "10978a51-1541-4eb9-91c2-2b2858102cfb",
+      "name": "400 - Invalid Order",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -350,
+        160
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'rejected', errors: $json.errors }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "70370f98-2c76-40bb-a1f6-6b24b5cfc5d1",
+      "name": "502 - Sheet Write Failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        45
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"error\",\"stage\":\"google_sheets\",\"message\":\"Order storage failed; use the same order_id for a safe retry.\"}",
+        "options": {
+          "responseCode": 502
+        }
+      }
+    },
+    {
+      "id": "c30e496d-bff9-49f3-a6e5-6b90140fcfe0",
+      "name": "502 - Email Failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        190,
+        45
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"partial_failure\",\"stage\":\"email\",\"saved\":true,\"notified\":false,\"message\":\"Order stored but notification failed. Contact support before retrying.\"}",
+        "options": {
+          "responseCode": 502
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Receive New Order": {
+      "main": [
+        [
+          {
+            "node": "Validate & Normalize Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Normalize Order": {
+      "main": [
+        [
+          {
+            "node": "Order Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order Valid?": {
+      "main": [
+        [
+          {
+            "node": "Save Order to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "400 - Invalid Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Order to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Notify Business Owner (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "502 - Sheet Write Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Business Owner (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "200 - Order Processed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "502 - Email Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

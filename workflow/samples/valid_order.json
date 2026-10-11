@@ -1,0 +1,10 @@
+{
+  "order_id": "ORD-1001",
+  "customer_name": "Jane Smith",
+  "customer_email": "jane@example.com",
+  "product": "Wireless Keyboard",
+  "quantity": 2,
+  "unit_price": 39.5,
+  "currency": "USD",
+  "notes": "Deliver during business hours"
+}

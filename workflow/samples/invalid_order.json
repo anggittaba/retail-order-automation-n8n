@@ -1,0 +1,9 @@
+{
+  "order_id": "BAD/ID",
+  "customer_name": "",
+  "customer_email": "not-an-email",
+  "product": "",
+  "quantity": 0,
+  "unit_price": -5,
+  "currency": "US"
+}
